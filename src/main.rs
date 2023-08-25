@@ -84,13 +84,13 @@ macro_rules! box_vec {
 }
 
 struct TwoLayerNet {
-    layers: Connection,
+    layers: Network,
 }
 
 impl TwoLayerNet {
     fn new<R: Rng>(input_size: usize, hidden_size: usize, output_size: usize, rng: &mut R) -> Self {
         Self {
-            layers: Connection::from_layers(
+            layers: Network::from_layers(
                 box_vec!(
                     Dot::random((input_size, hidden_size), rng),
                     Add::zero(hidden_size),
@@ -135,12 +135,12 @@ trait Fittable<Input, Output, Loss> {
 
 type FMat = Array2<f32>;
 
-struct Connection {
+struct Network {
     head: Box<dyn Layer<FMat, FMat>>,
     tail: Box<dyn Fittable<FMat, FMat, f32>>,
 }
 
-impl Connection {
+impl Network {
     fn new(head: Box<dyn Layer<FMat, FMat>>, tail: Box<dyn Fittable<FMat, FMat, f32>>) -> Self {
         Self { head, tail }
     }
@@ -195,7 +195,7 @@ impl Connection {
     }
 }
 
-impl Fittable<FMat, FMat, f32> for Connection {
+impl Fittable<FMat, FMat, f32> for Network {
     fn predict(&self, input: &FMat) -> FMat {
         self.tail.predict(&self.head.forward(input))
     }
