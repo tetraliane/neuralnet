@@ -83,21 +83,16 @@ struct TwoLayerNet {
 
 impl TwoLayerNet {
     fn new<R: Rng>(input_size: usize, hidden_size: usize, output_size: usize, rng: &mut R) -> Self {
-        let w1 = random_matrix((input_size, hidden_size), rng);
-        let b1 = Array1::zeros(hidden_size);
-        let w2 = random_matrix((hidden_size, output_size), rng);
-        let b2 = Array1::zeros(output_size);
-
         let layers = Connection::new(
-            Box::new(Dot::new(w1)),
+            Box::new(Dot::random((input_size, hidden_size), rng)),
             Box::new(Connection::new(
-                Box::new(Add::new(b1)),
+                Box::new(Add::zero(hidden_size)),
                 Box::new(Connection::new(
                     Box::new(Relu::new()),
                     Box::new(Connection::new(
-                        Box::new(Dot::new(w2)),
+                        Box::new(Dot::random((hidden_size, output_size), rng)),
                         Box::new(Connection::new(
-                            Box::new(Add::new(b2)),
+                            Box::new(Add::zero(output_size)),
                             Box::new(SoftmaxWithLoss::new()),
                         )),
                     )),
@@ -206,6 +201,10 @@ impl Dot {
     fn new(wgt: FMat) -> Self {
         Self { wgt }
     }
+
+    fn random<R: Rng>(shape: (usize, usize), rng: &mut R) -> Self {
+        Self::new(random_matrix(shape, rng))
+    }
 }
 
 impl Layer<FMat, FMat> for Dot {
@@ -230,6 +229,10 @@ struct Add {
 impl Add {
     fn new(bias: Array1<f32>) -> Self {
         Self { bias }
+    }
+
+    fn zero(shape: usize) -> Self {
+        Self::new(Array1::zeros(shape))
     }
 }
 
