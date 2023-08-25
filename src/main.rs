@@ -78,8 +78,7 @@ fn random_matrix<R: Rng>(shape: (usize, usize), rng: &mut R) -> Array2<f32> {
 }
 
 struct TwoLayerNet {
-    layers: Vec<Box<dyn Layer<FMat, FMat>>>,
-    last_layer: SoftmaxWithLoss,
+    layers: Connection,
 }
 
 impl TwoLayerNet {
@@ -89,57 +88,36 @@ impl TwoLayerNet {
         let w2 = random_matrix((hidden_size, output_size), rng);
         let b2 = Array1::zeros(output_size);
 
-        Self {
-            layers: vec![
-                Box::new(Dot::new(w1)),
+        let layers = Connection::new(
+            Box::new(Dot::new(w1)),
+            Box::new(Connection::new(
                 Box::new(Add::new(b1)),
-                Box::new(Relu::new()),
-                Box::new(Dot::new(w2)),
-                Box::new(Add::new(b2)),
-            ],
-            last_layer: SoftmaxWithLoss::new(),
-        }
-    }
+                Box::new(Connection::new(
+                    Box::new(Relu::new()),
+                    Box::new(Connection::new(
+                        Box::new(Dot::new(w2)),
+                        Box::new(Connection::new(
+                            Box::new(Add::new(b2)),
+                            Box::new(SoftmaxWithLoss::new()),
+                        )),
+                    )),
+                )),
+            )),
+        );
 
-    fn layers(&mut self) -> &mut Vec<Box<dyn Layer<Array2<f32>, Array2<f32>>>> {
-        todo!();
-        &mut self.layers
+        Self { layers }
     }
 
     fn fit(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) {
-        // 順伝搬
-        let mut intermediate = vec![];
-
-        let mut x = input.to_owned();
-        for layer in self.layers() {
-            intermediate.push(x.clone());
-            x = layer.forward(x);
-        }
-
-        // 出力層 + 誤差関数
-        let y = x;
-        let mut dout = self.last_layer.fit(y, teacher.clone());
-
-        // 逆伝搬
-        for layer in self.layers().iter_mut().rev() {
-            let input = intermediate.pop().unwrap();
-            let new_dout = layer.backward(dout.clone(), &input);
-            layer.learn(&dout, &input);
-            dout = new_dout;
-        }
+        self.layers.fit(input.to_owned(), teacher.to_owned());
     }
 
     fn loss(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> f32 {
-        let y = self.predict(input);
-        self.last_layer.loss(y, teacher).1
+        self.layers.loss(input.to_owned(), teacher.to_owned())
     }
 
     fn predict(&mut self, input: &Array2<f32>) -> Array2<f32> {
-        let mut x = input.to_owned();
-        for layer in self.layers() {
-            x = layer.forward(x);
-        }
-        x
+        self.layers.predict(input.to_owned())
     }
 
     fn accuracy(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> f32 {
