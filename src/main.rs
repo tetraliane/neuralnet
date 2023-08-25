@@ -186,10 +186,10 @@ impl Fittable<FMat, FMat, f32> for Network {
     }
 
     fn fit(&mut self, input: &FMat, teacher: &FMat) -> FMat {
-        let y = self.head.forward(&input);
+        let y = self.head.forward(input);
         let dy = self.tail.fit(&y, teacher);
-        let dx = self.head.backward(&dy, &input);
-        self.head.learn(&dy, &input);
+        let dx = self.head.backward(&dy, input);
+        self.head.learn(&dy, input);
         dx
     }
 }
@@ -303,7 +303,7 @@ impl Fittable<FMat, FMat, f32> for SoftmaxWithLoss {
     }
 
     fn loss(&self, input: &FMat, teacher: &FMat) -> f32 {
-        self.loss(input, &teacher).1
+        self.loss(input, teacher).1
     }
 
     fn fit(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> Array2<f32> {
