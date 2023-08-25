@@ -109,15 +109,15 @@ impl TwoLayerNet {
     }
 
     fn fit(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) {
-        self.layers.fit(input.to_owned(), teacher.to_owned());
+        self.layers.fit(input, teacher);
     }
 
     fn loss(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> f32 {
-        self.layers.loss(input.to_owned(), teacher.to_owned())
+        self.layers.loss(input, teacher)
     }
 
     fn predict(&mut self, input: &Array2<f32>) -> Array2<f32> {
-        self.layers.predict(input.to_owned())
+        self.layers.predict(input)
     }
 
     fn accuracy(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> f32 {
@@ -151,15 +151,15 @@ impl TwoLayerNet {
 }
 
 trait Layer<Input, Output> {
-    fn forward(&self, x: Input) -> Output;
-    fn backward(&self, dout: Output, input: &Input) -> Input;
+    fn forward(&self, x: &Input) -> Output;
+    fn backward(&self, dout: &Output, input: &Input) -> Input;
     fn learn(&mut self, dout: &Output, x: &Input);
 }
 
 trait Fittable<Input, Output, Loss> {
-    fn predict(&self, input: Input) -> Output;
-    fn loss(&self, input: Input, teacher: Output) -> Loss;
-    fn fit(&mut self, input: Input, teacher: Output) -> Input;
+    fn predict(&self, input: &Input) -> Output;
+    fn loss(&self, input: &Input, teacher: &Output) -> Loss;
+    fn fit(&mut self, input: &Input, teacher: &Output) -> Input;
 }
 
 type FMat = Array2<f32>;
@@ -176,18 +176,18 @@ impl Connection {
 }
 
 impl Fittable<FMat, FMat, f32> for Connection {
-    fn predict(&self, input: FMat) -> FMat {
-        self.tail.predict(self.head.forward(input))
+    fn predict(&self, input: &FMat) -> FMat {
+        self.tail.predict(&self.head.forward(input))
     }
 
-    fn loss(&self, input: FMat, teacher: FMat) -> f32 {
-        self.tail.loss(self.head.forward(input), teacher)
+    fn loss(&self, input: &FMat, teacher: &FMat) -> f32 {
+        self.tail.loss(&self.head.forward(input), teacher)
     }
 
-    fn fit(&mut self, input: FMat, teacher: FMat) -> FMat {
-        let y = self.head.forward(input.clone());
-        let dy = self.tail.fit(y, teacher);
-        let dx = self.head.backward(dy.clone(), &input);
+    fn fit(&mut self, input: &FMat, teacher: &FMat) -> FMat {
+        let y = self.head.forward(&input);
+        let dy = self.tail.fit(&y, teacher);
+        let dx = self.head.backward(&dy, &input);
         self.head.learn(&dy, &input);
         dx
     }
@@ -205,11 +205,11 @@ impl Dot {
 }
 
 impl Layer<FMat, FMat> for Dot {
-    fn forward(&self, input: FMat) -> FMat {
+    fn forward(&self, input: &FMat) -> FMat {
         input.dot(&self.wgt)
     }
 
-    fn backward(&self, dout: FMat, _: &FMat) -> FMat {
+    fn backward(&self, dout: &FMat, _: &FMat) -> FMat {
         dout.dot(&self.wgt.t())
     }
 
@@ -230,12 +230,12 @@ impl Add {
 }
 
 impl Layer<FMat, FMat> for Add {
-    fn forward(&self, input: FMat) -> FMat {
+    fn forward(&self, input: &FMat) -> FMat {
         input + &self.bias
     }
 
-    fn backward(&self, dout: FMat, _: &FMat) -> FMat {
-        dout
+    fn backward(&self, dout: &FMat, _: &FMat) -> FMat {
+        dout.to_owned()
     }
 
     fn learn(&mut self, dout: &FMat, _: &FMat) {
@@ -313,11 +313,11 @@ impl Relu {
 }
 
 impl Layer<Array2<f32>, Array2<f32>> for Relu {
-    fn forward(&self, x: Array2<f32>) -> Array2<f32> {
+    fn forward(&self, x: &Array2<f32>) -> Array2<f32> {
         x.map(|xi| xi.max(0.))
     }
 
-    fn backward(&self, dout: Array2<f32>, input: &FMat) -> Array2<f32> {
+    fn backward(&self, dout: &Array2<f32>, input: &FMat) -> Array2<f32> {
         let mut dx = dout.to_owned();
         dx.zip_mut_with(input, |dout_i, xi| {
             *dout_i = if *xi <= 0. { 0. } else { *dout_i }
@@ -336,7 +336,7 @@ impl SoftmaxWithLoss {
         Self {}
     }
 
-    fn loss(&self, x: Array2<f32>, teacher: &Array2<f32>) -> (Array2<f32>, f32) {
+    fn loss(&self, x: &Array2<f32>, teacher: &Array2<f32>) -> (Array2<f32>, f32) {
         let y = softmax(x);
         let error = cross_entropy_error(&y, teacher);
         (y, error)
@@ -349,21 +349,21 @@ impl SoftmaxWithLoss {
 }
 
 impl Fittable<FMat, FMat, f32> for SoftmaxWithLoss {
-    fn predict(&self, input: FMat) -> FMat {
-        input
+    fn predict(&self, input: &FMat) -> FMat {
+        input.to_owned()
     }
 
-    fn loss(&self, input: FMat, teacher: FMat) -> f32 {
+    fn loss(&self, input: &FMat, teacher: &FMat) -> f32 {
         self.loss(input, &teacher).1
     }
 
-    fn fit(&mut self, input: Array2<f32>, teacher: Array2<f32>) -> Array2<f32> {
-        let (y, _) = self.loss(input, &teacher);
-        self.backward(&y, &teacher)
+    fn fit(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> Array2<f32> {
+        let (y, _) = self.loss(input, teacher);
+        self.backward(&y, teacher)
     }
 }
 
-fn softmax(x: Array2<f32>) -> Array2<f32> {
+fn softmax(x: &Array2<f32>) -> Array2<f32> {
     let mut values = vec![];
     for row in x.axis_iter(Axis(0)) {
         let max = *row.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
