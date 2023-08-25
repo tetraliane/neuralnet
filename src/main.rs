@@ -77,30 +77,31 @@ fn random_matrix<R: Rng>(shape: (usize, usize), rng: &mut R) -> Array2<f32> {
         .unwrap()
 }
 
+macro_rules! box_vec {
+    ( $( $x:expr ),+ $(,)? ) => {
+        vec![$( Box::new($x) ),+]
+    };
+}
+
 struct TwoLayerNet {
     layers: Connection,
 }
 
 impl TwoLayerNet {
     fn new<R: Rng>(input_size: usize, hidden_size: usize, output_size: usize, rng: &mut R) -> Self {
-        let layers = Connection::new(
-            Box::new(Dot::random((input_size, hidden_size), rng)),
-            Box::new(Connection::new(
-                Box::new(Add::zero(hidden_size)),
-                Box::new(Connection::new(
-                    Box::new(Relu::new()),
-                    Box::new(Connection::new(
-                        Box::new(Dot::random((hidden_size, output_size), rng)),
-                        Box::new(Connection::new(
-                            Box::new(Add::zero(output_size)),
-                            Box::new(SoftmaxWithLoss::new()),
-                        )),
-                    )),
-                )),
-            )),
-        );
-
-        Self { layers }
+        Self {
+            layers: Connection::from_layers(
+                box_vec!(
+                    Dot::random((input_size, hidden_size), rng),
+                    Add::zero(hidden_size),
+                    Relu::new(),
+                    Dot::random((hidden_size, output_size), rng),
+                    Add::zero(output_size),
+                ),
+                Box::new(SoftmaxWithLoss::new()),
+            )
+            .expect("Failed to make network"),
+        }
     }
 
     fn fit(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) {
@@ -142,6 +143,26 @@ struct Connection {
 impl Connection {
     fn new(head: Box<dyn Layer<FMat, FMat>>, tail: Box<dyn Fittable<FMat, FMat, f32>>) -> Self {
         Self { head, tail }
+    }
+
+    fn from_layers(
+        mut layers: Vec<Box<dyn Layer<FMat, FMat>>>,
+        last_layer: Box<dyn Fittable<FMat, FMat, f32>>,
+    ) -> Option<Self> {
+        if layers.is_empty() {
+            return None;
+        }
+
+        let head = layers.remove(0);
+        let tail = layers;
+        Some(Self::new(
+            head,
+            if tail.is_empty() {
+                last_layer
+            } else {
+                Box::new(Self::from_layers(tail, last_layer).expect("Failed to make network"))
+            },
+        ))
     }
 
     fn accuracy(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> f32 {
