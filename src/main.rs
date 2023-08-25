@@ -103,9 +103,9 @@ fn make_two_layer_net<R: Rng>(
 }
 
 trait Layer<Input, Output> {
-    fn forward(&self, x: &Input) -> Output;
-    fn backward(&self, dout: &Output, input: &Input) -> Input;
-    fn learn(&mut self, dout: &Output, x: &Input);
+    fn forward(&self, input: &Input) -> Output;
+    fn backward(&self, grad_out: &Output, input: &Input) -> Input;
+    fn learn(&mut self, grad_out: &Output, input: &Input);
 }
 
 trait Fittable<Input, Output, Loss> {
@@ -214,12 +214,12 @@ impl Layer<FMat, FMat> for Dot {
         input.dot(&self.wgt)
     }
 
-    fn backward(&self, dout: &FMat, _: &FMat) -> FMat {
-        dout.dot(&self.wgt.t())
+    fn backward(&self, grad_out: &FMat, _: &FMat) -> FMat {
+        grad_out.dot(&self.wgt.t())
     }
 
-    fn learn(&mut self, dout: &FMat, input: &FMat) {
-        self.wgt -= &(LEARNING_RATE * input.t().dot(dout));
+    fn learn(&mut self, grad_out: &FMat, input: &FMat) {
+        self.wgt -= &(LEARNING_RATE * input.t().dot(grad_out));
     }
 }
 
@@ -243,12 +243,12 @@ impl Layer<FMat, FMat> for Add {
         input + &self.bias
     }
 
-    fn backward(&self, dout: &FMat, _: &FMat) -> FMat {
-        dout.to_owned()
+    fn backward(&self, grad_out: &FMat, _: &FMat) -> FMat {
+        grad_out.to_owned()
     }
 
-    fn learn(&mut self, dout: &FMat, _: &FMat) {
-        self.bias -= &(LEARNING_RATE * dout.sum_axis(Axis(0)));
+    fn learn(&mut self, grad_out: &FMat, _: &FMat) {
+        self.bias -= &(LEARNING_RATE * grad_out.sum_axis(Axis(0)));
     }
 }
 
@@ -262,12 +262,12 @@ impl Relu {
 }
 
 impl Layer<Array2<f32>, Array2<f32>> for Relu {
-    fn forward(&self, x: &Array2<f32>) -> Array2<f32> {
-        x.map(|xi| xi.max(0.))
+    fn forward(&self, input: &Array2<f32>) -> Array2<f32> {
+        input.map(|xi| xi.max(0.))
     }
 
-    fn backward(&self, dout: &Array2<f32>, input: &FMat) -> Array2<f32> {
-        let mut dx = dout.to_owned();
+    fn backward(&self, grad_out: &Array2<f32>, input: &FMat) -> Array2<f32> {
+        let mut dx = grad_out.to_owned();
         dx.zip_mut_with(input, |dout_i, xi| {
             *dout_i = if *xi <= 0. { 0. } else { *dout_i }
         });
@@ -285,15 +285,15 @@ impl SoftmaxWithLoss {
         Self {}
     }
 
-    fn loss(&self, x: &Array2<f32>, teacher: &Array2<f32>) -> (Array2<f32>, f32) {
-        let y = softmax(x);
+    fn loss(&self, input: &Array2<f32>, teacher: &Array2<f32>) -> (Array2<f32>, f32) {
+        let y = softmax(input);
         let error = cross_entropy_error(&y, teacher);
         (y, error)
     }
 
-    fn backward(&self, y: &Array2<f32>, teacher: &Array2<f32>) -> Array2<f32> {
+    fn backward(&self, grad_out: &Array2<f32>, teacher: &Array2<f32>) -> Array2<f32> {
         let batch_size = teacher.dim().0;
-        (y - teacher) / (batch_size as f32)
+        (grad_out - teacher) / (batch_size as f32)
     }
 }
 
