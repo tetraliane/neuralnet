@@ -121,6 +121,35 @@ impl TwoLayerNet {
     }
 
     fn accuracy(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> f32 {
+        self.layers.accuracy(input, teacher)
+    }
+}
+
+trait Layer<Input, Output> {
+    fn forward(&self, x: &Input) -> Output;
+    fn backward(&self, dout: &Output, input: &Input) -> Input;
+    fn learn(&mut self, dout: &Output, x: &Input);
+}
+
+trait Fittable<Input, Output, Loss> {
+    fn predict(&self, input: &Input) -> Output;
+    fn loss(&self, input: &Input, teacher: &Output) -> Loss;
+    fn fit(&mut self, input: &Input, teacher: &Output) -> Input;
+}
+
+type FMat = Array2<f32>;
+
+struct Connection {
+    head: Box<dyn Layer<FMat, FMat>>,
+    tail: Box<dyn Fittable<FMat, FMat, f32>>,
+}
+
+impl Connection {
+    fn new(head: Box<dyn Layer<FMat, FMat>>, tail: Box<dyn Fittable<FMat, FMat, f32>>) -> Self {
+        Self { head, tail }
+    }
+
+    fn accuracy(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> f32 {
         let y = self.predict(input);
 
         let a = teacher
@@ -147,31 +176,6 @@ impl TwoLayerNet {
             })
             .count();
         count as f32 / input.dim().0 as f32
-    }
-}
-
-trait Layer<Input, Output> {
-    fn forward(&self, x: &Input) -> Output;
-    fn backward(&self, dout: &Output, input: &Input) -> Input;
-    fn learn(&mut self, dout: &Output, x: &Input);
-}
-
-trait Fittable<Input, Output, Loss> {
-    fn predict(&self, input: &Input) -> Output;
-    fn loss(&self, input: &Input, teacher: &Output) -> Loss;
-    fn fit(&mut self, input: &Input, teacher: &Output) -> Input;
-}
-
-type FMat = Array2<f32>;
-
-struct Connection {
-    head: Box<dyn Layer<FMat, FMat>>,
-    tail: Box<dyn Fittable<FMat, FMat, f32>>,
-}
-
-impl Connection {
-    fn new(head: Box<dyn Layer<FMat, FMat>>, tail: Box<dyn Fittable<FMat, FMat, f32>>) -> Self {
-        Self { head, tail }
     }
 }
 
