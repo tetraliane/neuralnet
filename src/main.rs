@@ -252,66 +252,6 @@ impl Layer<FMat, FMat> for Add {
     }
 }
 
-// #[derive(Clone)]
-// struct Affine {
-//     dot_layer: Dot,
-//     add_layer: Add,
-//     dot_input: Option<FMat>,
-//     dot_dout: Option<FMat>,
-//     add_input: Option<FMat>,
-//     add_dout: Option<FMat>,
-// }
-
-// impl Affine {
-//     fn new(wgt: Array2<f32>, bias: Array1<f32>) -> Self {
-//         Self {
-//             dot_layer: Dot::new(wgt),
-//             add_layer: Add::new(bias),
-//             dot_input: None,
-//             dot_dout: None,
-//             add_input: None,
-//             add_dout: None,
-//         }
-//     }
-
-//     fn fit(&mut self, input: FMat, dout: FMat) -> FMat {
-//         self.forward(input.clone());
-//         let backward_result = self.backward(dout.clone(), &input);
-//         self.learn(&dout, &input);
-//         backward_result
-//     }
-// }
-
-// impl Layer<Array2<f32>, Array2<f32>> for Affine {
-//     fn forward(&mut self, x: Array2<f32>) -> Array2<f32> {
-//         self.dot_input = Some(x.clone());
-//         let dot = self.dot_layer.forward(x);
-
-//         self.add_input = Some(dot.clone());
-//         self.add_layer.forward(dot)
-//     }
-//     fn backward(&mut self, dout: Array2<f32>, _: &FMat) -> Array2<f32> {
-//         self.add_dout = Some(dout.clone());
-//         let add_input = self.add_input.as_ref().unwrap();
-//         let dout = self.add_layer.backward(dout, add_input);
-
-//         self.dot_dout = Some(dout.clone());
-//         let dot_input = self.dot_input.as_ref().unwrap();
-//         self.dot_layer.backward(dout, dot_input)
-//     }
-
-//     fn learn(&mut self, _: &FMat, _: &FMat) {
-//         self.dot_layer.learn(
-//             self.dot_dout.as_ref().unwrap(),
-//             self.dot_input.as_ref().unwrap(),
-//         );
-//         self.add_layer.learn(
-//             self.add_dout.as_ref().unwrap(),
-//             self.add_input.as_ref().unwrap(),
-//         );
-//     }
-// }
-
 #[derive(Clone)]
 struct Relu {}
 
