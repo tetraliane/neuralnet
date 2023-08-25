@@ -42,7 +42,7 @@ fn main() {
     let iter_per_epoch = (TRAINING_LEN / BATCH_SIZE).max(1);
 
     let mut rng = rand::thread_rng();
-    let mut net = TwoLayerNet::new(28 * 28, 50, 10, &mut rng);
+    let mut net = make_two_layer_net(28 * 28, 50, 10, &mut rng);
     let all_indices = (0..x_trn.dim().0).collect::<Vec<_>>();
 
     for i in 0..ITERS_NUM {
@@ -83,42 +83,23 @@ macro_rules! box_vec {
     };
 }
 
-struct TwoLayerNet {
-    layers: Network,
-}
-
-impl TwoLayerNet {
-    fn new<R: Rng>(input_size: usize, hidden_size: usize, output_size: usize, rng: &mut R) -> Self {
-        Self {
-            layers: Network::from_layers(
-                box_vec!(
-                    Dot::random((input_size, hidden_size), rng),
-                    Add::zero(hidden_size),
-                    Relu::new(),
-                    Dot::random((hidden_size, output_size), rng),
-                    Add::zero(output_size),
-                ),
-                Box::new(SoftmaxWithLoss::new()),
-            )
-            .expect("Failed to make network"),
-        }
-    }
-
-    fn fit(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) {
-        self.layers.fit(input, teacher);
-    }
-
-    fn loss(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> f32 {
-        self.layers.loss(input, teacher)
-    }
-
-    fn predict(&mut self, input: &Array2<f32>) -> Array2<f32> {
-        self.layers.predict(input)
-    }
-
-    fn accuracy(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> f32 {
-        self.layers.accuracy(input, teacher)
-    }
+fn make_two_layer_net<R: Rng>(
+    input_size: usize,
+    hidden_size: usize,
+    output_size: usize,
+    rng: &mut R,
+) -> Network {
+    Network::from_layers(
+        box_vec!(
+            Dot::random((input_size, hidden_size), rng),
+            Add::zero(hidden_size),
+            Relu::new(),
+            Dot::random((hidden_size, output_size), rng),
+            Add::zero(output_size),
+        ),
+        Box::new(SoftmaxWithLoss::new()),
+    )
+    .expect("Failed to make network")
 }
 
 trait Layer<Input, Output> {
