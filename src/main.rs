@@ -185,6 +185,10 @@ impl<V> Fittable<Array2<V>, Array2<V>, V> for Network<V> {
     }
 }
 
+trait Optimizer<A, D> {
+    fn update(&mut self, param: &mut Array<A, D>, grad: &Array<A, D>);
+}
+
 #[derive(Clone)]
 struct SGD {
     learning_rate: f32,
@@ -194,8 +198,10 @@ impl SGD {
     fn new(learning_rate: f32) -> Self {
         Self { learning_rate }
     }
+}
 
-    fn update<D: Dimension>(&mut self, param: &mut Array<f32, D>, grad: &Array<f32, D>) {
+impl<D: Dimension> Optimizer<f32, D> for SGD {
+    fn update(&mut self, param: &mut Array<f32, D>, grad: &Array<f32, D>) {
         *param -= &(grad * self.learning_rate);
     }
 }
