@@ -88,7 +88,7 @@ fn make_two_layer_net<R: Rng>(
     hidden_size: usize,
     output_size: usize,
     rng: &mut R,
-) -> Network {
+) -> Network<f32> {
     Network::from_layers(
         box_vec!(
             Dot::random((input_size, hidden_size), rng),
@@ -116,19 +116,24 @@ trait Fittable<Input, Output, Loss> {
 
 type FMat = Array2<f32>;
 
-struct Network {
-    head: Box<dyn Layer<FMat, FMat>>,
-    tail: Box<dyn Fittable<FMat, FMat, f32>>,
+struct Network<V> {
+    head: Box<dyn Layer<Array2<V>, Array2<V>>>,
+    tail: Box<dyn Fittable<Array2<V>, Array2<V>, V>>,
 }
 
-impl Network {
-    fn new(head: Box<dyn Layer<FMat, FMat>>, tail: Box<dyn Fittable<FMat, FMat, f32>>) -> Self {
+impl<V> Network<V> {
+    fn new(
+        head: Box<dyn Layer<Array2<V>, Array2<V>>>,
+        tail: Box<dyn Fittable<Array2<V>, Array2<V>, V>>,
+    ) -> Self {
         Self { head, tail }
     }
+}
 
+impl Network<f32> {
     fn from_layers(
-        mut layers: Vec<Box<dyn Layer<FMat, FMat>>>,
-        last_layer: Box<dyn Fittable<FMat, FMat, f32>>,
+        mut layers: Vec<Box<dyn Layer<Array2<f32>, Array2<f32>>>>,
+        last_layer: Box<dyn Fittable<Array2<f32>, Array2<f32>, f32>>,
     ) -> Option<Self> {
         if layers.is_empty() {
             return None;
@@ -145,8 +150,13 @@ impl Network {
             },
         ))
     }
+}
 
-    fn accuracy(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> f32 {
+impl<V> Network<V>
+where
+    V: PartialOrd,
+{
+    fn accuracy(&mut self, input: &Array2<V>, teacher: &Array2<V>) -> f32 {
         let y = self.predict(input);
 
         let a = teacher
@@ -176,16 +186,16 @@ impl Network {
     }
 }
 
-impl Fittable<FMat, FMat, f32> for Network {
-    fn predict(&self, input: &FMat) -> FMat {
+impl<V> Fittable<Array2<V>, Array2<V>, V> for Network<V> {
+    fn predict(&self, input: &Array2<V>) -> Array2<V> {
         self.tail.predict(&self.head.forward(input))
     }
 
-    fn loss(&self, input: &FMat, teacher: &FMat) -> f32 {
+    fn loss(&self, input: &Array2<V>, teacher: &Array2<V>) -> V {
         self.tail.loss(&self.head.forward(input), teacher)
     }
 
-    fn fit(&mut self, input: &FMat, teacher: &FMat) -> FMat {
+    fn fit(&mut self, input: &Array2<V>, teacher: &Array2<V>) -> Array2<V> {
         let y = self.head.forward(input);
         let dy = self.tail.fit(&y, teacher);
         let dx = self.head.backward(&dy, input);
