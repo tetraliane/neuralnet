@@ -1,8 +1,8 @@
 use std::ops::{Mul, SubAssign};
 
 use mnist::{MnistBuilder, NormalizedMnist};
-use ndarray::{Array, Array1, Array2, Axis, Dim, Dimension, LinalgScalar};
-use num_traits::Zero;
+use ndarray::{Array, Array1, Array2, Axis, Dim, Dimension, LinalgScalar, ScalarOperand};
+use num_traits::{Float, Zero};
 use rand::{distributions::Uniform, seq::SliceRandom, Rng};
 
 const TRAINING_LEN: usize = 60000;
@@ -396,16 +396,25 @@ impl Fittable<FMat, FMat, f32> for SoftmaxWithLoss {
     }
 }
 
-fn softmax(x: &Array2<f32>) -> Array2<f32> {
-    let mut values = vec![];
-    for row in x.axis_iter(Axis(0)) {
-        let max = *row.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
-        let a = &row - Array1::<f32>::ones(row.dim()) * max;
-        let exp_row = a.mapv(|v| v.exp());
-        let exp_sum = exp_row.iter().sum::<f32>();
-        values.push((exp_row / exp_sum).to_vec())
-    }
-    Array2::from_shape_vec(x.dim(), values.into_iter().flatten().collect()).unwrap()
+fn softmax<V>(x: &Array2<V>) -> Array2<V>
+where
+    V: Float + ScalarOperand,
+{
+    x.axis_iter(Axis(0))
+        .flat_map(|row| {
+            let max = *row
+                .iter()
+                .max_by(|a, b| a.partial_cmp(b).expect("NaN found"))
+                .expect("Data is empty");
+            let exp_row = (&row - max).mapv(|v| v.exp());
+            let exp_sum = exp_row
+                .iter()
+                .fold(V::zero(), |a, b| a + *b);
+            exp_row / exp_sum
+        })
+        .collect::<Array1<_>>()
+        .into_shape(x.dim())
+        .expect("Failed to collect values into an array")
 }
 
 fn cross_entropy_error(y: &Array2<f32>, t: &Array2<f32>) -> f32 {
