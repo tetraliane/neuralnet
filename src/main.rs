@@ -242,27 +242,31 @@ where
     }
 }
 
-struct Add {
-    bias: Array1<f32>,
-    optimizer: SGD<f32>,
+struct Add<V, O: Optimizer<V, Dim<[usize; 1]>>> {
+    bias: Array1<V>,
+    optimizer: O
 }
 
-impl Add {
-    fn new(bias: Array1<f32>, optimizer: SGD<f32>) -> Self {
+impl<V, O: Optimizer<V, Dim<[usize; 1]>>> Add<V, O> {
+    fn new(bias: Array1<V>, optimizer: O) -> Self {
         Self { bias, optimizer }
     }
 }
 
-impl Layer<FMat, FMat> for Add {
-    fn forward(&self, input: &FMat) -> FMat {
+impl<V, O> Layer<Array2<V>, Array2<V>> for Add<V, O>
+where
+    V: LinalgScalar,
+    O: Optimizer<V, Dim<[usize; 1]>>
+{
+    fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input + &self.bias
     }
 
-    fn backward(&self, grad_out: &FMat, _: &FMat) -> FMat {
+    fn backward(&self, grad_out: &Array2<V>, _: &Array2<V>) -> Array2<V> {
         grad_out.to_owned()
     }
 
-    fn learn(&mut self, grad_out: &FMat, _: &FMat) {
+    fn learn(&mut self, grad_out: &Array2<V>, _: &Array2<V>) {
         self.optimizer
             .update(&mut self.bias, grad_out.sum_axis(Axis(0)))
     }
