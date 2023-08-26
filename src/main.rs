@@ -1,5 +1,7 @@
+use std::ops::{Mul, SubAssign};
+
 use mnist::{MnistBuilder, NormalizedMnist};
-use ndarray::{Array, Array1, Array2, Axis, Dimension, LinalgScalar};
+use ndarray::{Array, Array1, Array2, Axis, Dim, Dimension, LinalgScalar};
 use rand::{distributions::Uniform, seq::SliceRandom, Rng};
 
 const TRAINING_LEN: usize = 60000;
@@ -186,39 +188,48 @@ impl<V> Fittable<Array2<V>, Array2<V>, V> for Network<V> {
 }
 
 trait Optimizer<A, D> {
-    fn update(&mut self, param: &mut Array<A, D>, grad: &Array<A, D>);
+    fn update(&mut self, param: &mut Array<A, D>, grad: Array<A, D>);
 }
 
 #[derive(Clone)]
-struct SGD {
-    learning_rate: f32,
+struct SGD<V> {
+    learning_rate: V,
 }
 
-impl SGD {
-    fn new(learning_rate: f32) -> Self {
+impl<V> SGD<V> {
+    fn new(learning_rate: V) -> Self {
         Self { learning_rate }
     }
 }
 
-impl<D: Dimension> Optimizer<f32, D> for SGD {
-    fn update(&mut self, param: &mut Array<f32, D>, grad: &Array<f32, D>) {
-        *param -= &(grad * self.learning_rate);
+impl<V, D> Optimizer<V, D> for SGD<V>
+where
+    D: Dimension,
+    V: Mul<Array<V, D>, Output = Array<V, D>> + SubAssign + Clone,
+{
+    fn update(&mut self, param: &mut Array<V, D>, grad: Array<V, D>) {
+        *param -= &(self.learning_rate.clone() * grad);
     }
 }
 
 #[derive(Clone)]
 struct Dot<V> {
     wgt: Array2<V>,
-    optimizer: SGD,
+    optimizer: SGD<V>,
 }
 
 impl<V> Dot<V> {
-    fn new(wgt: Array2<V>, optimizer: SGD) -> Self {
+    fn new(wgt: Array2<V>, optimizer: SGD<V>) -> Self {
         Self { wgt, optimizer }
     }
 }
 
-impl<V: LinalgScalar> Layer<Array2<V>, Array2<V>> for Dot<V> {
+impl<V> Layer<Array2<V>, Array2<V>> for Dot<V>
+where
+    V: Mul<Array<V, Dim<[usize; 2]>>, Output = Array<V, Dim<[usize; 2]>>>
+        + SubAssign
+        + LinalgScalar,
+{
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input.dot(&self.wgt)
     }
@@ -229,22 +240,22 @@ impl<V: LinalgScalar> Layer<Array2<V>, Array2<V>> for Dot<V> {
 
     fn learn(&mut self, grad_out: &Array2<V>, input: &Array2<V>) {
         self.optimizer
-            .update(&mut self.wgt, &input.t().dot(grad_out))
+            .update(&mut self.wgt, input.t().dot(grad_out))
     }
 }
 
 #[derive(Clone)]
 struct Add {
     bias: Array1<f32>,
-    optimizer: SGD,
+    optimizer: SGD<f32>,
 }
 
 impl Add {
-    fn new(bias: Array1<f32>, optimizer: SGD) -> Self {
+    fn new(bias: Array1<f32>, optimizer: SGD<f32>) -> Self {
         Self { bias, optimizer }
     }
 
-    fn zero(shape: usize, optimizer: SGD) -> Self {
+    fn zero(shape: usize, optimizer: SGD<f32>) -> Self {
         Self::new(Array1::zeros(shape), optimizer)
     }
 }
@@ -260,7 +271,7 @@ impl Layer<FMat, FMat> for Add {
 
     fn learn(&mut self, grad_out: &FMat, _: &FMat) {
         self.optimizer
-            .update(&mut self.bias, &grad_out.sum_axis(Axis(0)))
+            .update(&mut self.bias, grad_out.sum_axis(Axis(0)))
     }
 }
 
