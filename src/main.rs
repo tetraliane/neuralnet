@@ -317,26 +317,24 @@ impl Softmax {
     }
 }
 
-impl Layer<FMat, FMat> for Softmax {
-    fn forward(&self, input: &FMat) -> FMat {
+impl<V: Float + ScalarOperand> Layer<Array2<V>, Array2<V>> for Softmax {
+    fn forward(&self, input: &Array2<V>) -> Array2<V> {
         softmax(input)
     }
 
-    fn backward(&self, grad_out: &FMat, input: &FMat) -> FMat {
+    fn backward(&self, grad_out: &Array2<V>, input: &Array2<V>) -> Array2<V> {
         let output = self.forward(input);
-
         let dot = output
             .axis_iter(Axis(0))
             .zip(grad_out.axis_iter(Axis(0)))
             .map(|(out, grad)| out.dot(&grad))
             .collect::<Array1<_>>()
             .into_shape((output.dim().0, 1))
-            .unwrap();
-
+            .expect("Failed to collect values into an array");
         output * (grad_out - &dot)
     }
 
-    fn learn(&mut self, _: &FMat, _: &FMat) {}
+    fn learn(&mut self, _: &Array2<V>, _: &Array2<V>) {}
 }
 
 struct CrossEntropy {}
