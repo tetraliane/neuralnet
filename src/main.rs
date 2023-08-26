@@ -1,5 +1,5 @@
 use mnist::{MnistBuilder, NormalizedMnist};
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array, Array1, Array2, Axis, Dimension};
 use rand::{distributions::Uniform, seq::SliceRandom, Rng};
 
 const TRAINING_LEN: usize = 60000;
@@ -96,11 +96,11 @@ fn make_two_layer_net<R: Rng>(
     rng: &mut R,
 ) -> Network<f32> {
     network!(
-        Dot::random((input_size, hidden_size), rng),
-        Add::zero(hidden_size),
+        Dot::random((input_size, hidden_size), rng, SGD::new(LEARNING_RATE)),
+        Add::zero(hidden_size, SGD::new(LEARNING_RATE)),
         Relu::new(),
-        Dot::random((hidden_size, output_size), rng),
-        Add::zero(output_size);
+        Dot::random((hidden_size, output_size), rng, SGD::new(LEARNING_RATE)),
+        Add::zero(output_size, SGD::new(LEARNING_RATE));
         SoftmaxWithLoss::new()
     )
 }
@@ -186,17 +186,33 @@ impl<V> Fittable<Array2<V>, Array2<V>, V> for Network<V> {
 }
 
 #[derive(Clone)]
+struct SGD {
+    learning_rate: f32,
+}
+
+impl SGD {
+    fn new(learning_rate: f32) -> Self {
+        Self { learning_rate }
+    }
+
+    fn update<D: Dimension>(&mut self, param: &mut Array<f32, D>, grad: &Array<f32, D>) {
+        *param -= &(grad * self.learning_rate);
+    }
+}
+
+#[derive(Clone)]
 struct Dot {
     wgt: FMat,
+    optimizer: SGD,
 }
 
 impl Dot {
-    fn new(wgt: FMat) -> Self {
-        Self { wgt }
+    fn new(wgt: FMat, optimizer: SGD) -> Self {
+        Self { wgt, optimizer }
     }
 
-    fn random<R: Rng>(shape: (usize, usize), rng: &mut R) -> Self {
-        Self::new(random_matrix(shape, rng))
+    fn random<R: Rng>(shape: (usize, usize), rng: &mut R, optimizer: SGD) -> Self {
+        Self::new(random_matrix(shape, rng), optimizer)
     }
 }
 
@@ -210,22 +226,24 @@ impl Layer<FMat, FMat> for Dot {
     }
 
     fn learn(&mut self, grad_out: &FMat, input: &FMat) {
-        self.wgt -= &(LEARNING_RATE * input.t().dot(grad_out));
+        self.optimizer
+            .update(&mut self.wgt, &input.t().dot(grad_out))
     }
 }
 
 #[derive(Clone)]
 struct Add {
     bias: Array1<f32>,
+    optimizer: SGD,
 }
 
 impl Add {
-    fn new(bias: Array1<f32>) -> Self {
-        Self { bias }
+    fn new(bias: Array1<f32>, optimizer: SGD) -> Self {
+        Self { bias, optimizer }
     }
 
-    fn zero(shape: usize) -> Self {
-        Self::new(Array1::zeros(shape))
+    fn zero(shape: usize, optimizer: SGD) -> Self {
+        Self::new(Array1::zeros(shape), optimizer)
     }
 }
 
@@ -239,7 +257,8 @@ impl Layer<FMat, FMat> for Add {
     }
 
     fn learn(&mut self, grad_out: &FMat, _: &FMat) {
-        self.bias -= &(LEARNING_RATE * grad_out.sum_axis(Axis(0)));
+        self.optimizer
+            .update(&mut self.bias, &grad_out.sum_axis(Axis(0)))
     }
 }
 
