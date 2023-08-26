@@ -224,9 +224,7 @@ impl<V, O: Optimizer<V, Dim<[usize; 2]>>> Dot<V, O> {
 
 impl<V, O: Optimizer<V, Dim<[usize; 2]>>> Layer<Array2<V>, Array2<V>> for Dot<V, O>
 where
-    V: Mul<Array<V, Dim<[usize; 2]>>, Output = Array<V, Dim<[usize; 2]>>>
-        + SubAssign
-        + LinalgScalar,
+    V: LinalgScalar,
 {
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input.dot(&self.wgt)
