@@ -191,7 +191,6 @@ trait Optimizer<A, D> {
     fn update(&mut self, param: &mut Array<A, D>, grad: Array<A, D>);
 }
 
-#[derive(Clone)]
 struct SGD<V> {
     learning_rate: V,
 }
@@ -212,7 +211,6 @@ where
     }
 }
 
-#[derive(Clone)]
 struct Dot<V> {
     wgt: Array2<V>,
     optimizer: SGD<V>,
@@ -244,7 +242,6 @@ where
     }
 }
 
-#[derive(Clone)]
 struct Add {
     bias: Array1<f32>,
     optimizer: SGD<f32>,
@@ -275,7 +272,6 @@ impl Layer<FMat, FMat> for Add {
     }
 }
 
-#[derive(Clone)]
 struct Relu {}
 
 impl Relu {
@@ -300,7 +296,6 @@ impl Layer<Array2<f32>, Array2<f32>> for Relu {
     fn learn(&mut self, _: &Array2<f32>, _: &Array2<f32>) {}
 }
 
-#[derive(Clone)]
 struct SoftmaxWithLoss {}
 
 impl SoftmaxWithLoss {
