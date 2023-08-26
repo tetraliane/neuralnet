@@ -211,18 +211,18 @@ where
     }
 }
 
-struct Dot<V> {
+struct Dot<V, O: Optimizer<V, Dim<[usize; 2]>>> {
     wgt: Array2<V>,
-    optimizer: SGD<V>,
+    optimizer: O,
 }
 
-impl<V> Dot<V> {
-    fn new(wgt: Array2<V>, optimizer: SGD<V>) -> Self {
+impl<V, O: Optimizer<V, Dim<[usize; 2]>>> Dot<V, O> {
+    fn new(wgt: Array2<V>, optimizer: O) -> Self {
         Self { wgt, optimizer }
     }
 }
 
-impl<V> Layer<Array2<V>, Array2<V>> for Dot<V>
+impl<V, O: Optimizer<V, Dim<[usize; 2]>>> Layer<Array2<V>, Array2<V>> for Dot<V, O>
 where
     V: Mul<Array<V, Dim<[usize; 2]>>, Output = Array<V, Dim<[usize; 2]>>>
         + SubAssign
