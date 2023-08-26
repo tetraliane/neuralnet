@@ -1,5 +1,5 @@
 use mnist::{MnistBuilder, NormalizedMnist};
-use ndarray::{Array1, Array2, Axis};
+use ndarray::{Array1, Array2, Axis, LinalgScalar};
 use rand::{distributions::Uniform, seq::SliceRandom, Rng};
 
 const TRAINING_LEN: usize = 60000;
@@ -186,12 +186,12 @@ impl<V> Fittable<Array2<V>, Array2<V>, V> for Network<V> {
 }
 
 #[derive(Clone)]
-struct Dot {
-    wgt: FMat,
+struct Dot<V> {
+    wgt: Array2<V>,
 }
 
-impl Dot {
-    fn new(wgt: FMat) -> Self {
+impl<V> Dot<V> {
+    fn new(wgt: Array2<V>) -> Self {
         Self { wgt }
     }
 
@@ -200,17 +200,17 @@ impl Dot {
     }
 }
 
-impl Layer<FMat, FMat> for Dot {
-    fn forward(&self, input: &FMat) -> FMat {
+impl<V: LinalgScalar> Layer<Array2<V>, Array2<V>> for Dot<V> {
+    fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input.dot(&self.wgt)
     }
 
-    fn backward(&self, grad_out: &FMat, _: &FMat) -> FMat {
+    fn backward(&self, grad_out: &Array2<V>, _: &Array2<V>) -> Array2<V> {
         grad_out.dot(&self.wgt.t())
     }
 
-    fn learn(&mut self, grad_out: &FMat, input: &FMat) {
-        self.wgt -= &(LEARNING_RATE * input.t().dot(grad_out));
+    fn learn(&mut self, grad_out: &Array2<V>, input: &Array2<V>) {
+        self.wgt = &self.wgt - LEARNING_RATE * input.t().dot(grad_out);
     }
 }
 
