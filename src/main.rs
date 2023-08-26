@@ -103,8 +103,9 @@ fn make_two_layer_net<R: Rng>(
         Add::new(Array1::zeros(hidden_size), Sgd::new(LEARNING_RATE)),
         Relu::new(),
         Dot::new(random_matrix((hidden_size, output_size), rng), Sgd::new(LEARNING_RATE)),
-        Add::new(Array1::zeros(output_size), Sgd::new(LEARNING_RATE));
-        SoftmaxWithLoss::new()
+        Add::new(Array1::zeros(output_size), Sgd::new(LEARNING_RATE)),
+        Softmax::new();
+        CrossEntropy::new()
     )
 }
 
@@ -306,6 +307,59 @@ where
     }
 
     fn learn(&mut self, _: &Array2<V>, _: &Array2<V>) {}
+}
+
+struct Softmax {}
+
+impl Softmax {
+    fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Layer<FMat, FMat> for Softmax {
+    fn forward(&self, input: &FMat) -> FMat {
+        softmax(input)
+    }
+
+    fn backward(&self, grad_out: &FMat, input: &FMat) -> FMat {
+        let output = self.forward(input);
+
+        let dot = output
+            .axis_iter(Axis(0))
+            .zip(grad_out.axis_iter(Axis(0)))
+            .map(|(out, grad)| out.dot(&grad))
+            .collect::<Array1<_>>()
+            .into_shape((output.dim().0, 1))
+            .unwrap();
+
+        output * (grad_out - &dot)
+    }
+
+    fn learn(&mut self, _: &FMat, _: &FMat) {}
+}
+
+struct CrossEntropy {}
+
+impl CrossEntropy {
+    fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Fittable<FMat, FMat, f32> for CrossEntropy {
+    fn predict(&self, input: &FMat) -> FMat {
+        input.to_owned()
+    }
+
+    fn loss(&self, input: &FMat, teacher: &FMat) -> f32 {
+        cross_entropy_error(input, teacher)
+    }
+
+    fn fit(&mut self, input: &FMat, teacher: &FMat) -> FMat {
+        let batch_size = teacher.dim().0;
+        -teacher / input / (batch_size as f32)
+    }
 }
 
 struct SoftmaxWithLoss {}
