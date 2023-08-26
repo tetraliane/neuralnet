@@ -375,9 +375,9 @@ impl SoftmaxWithLoss {
         (y, error)
     }
 
-    fn backward(&self, grad_out: &Array2<f32>, teacher: &Array2<f32>) -> Array2<f32> {
+    fn backward(&self, y: &Array2<f32>, teacher: &Array2<f32>) -> Array2<f32> {
         let batch_size = teacher.dim().0;
-        (grad_out - teacher) / (batch_size as f32)
+        (y - teacher) / (batch_size as f32)
     }
 }
 
