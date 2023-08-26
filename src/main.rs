@@ -99,10 +99,10 @@ fn make_two_layer_net<R: Rng>(
 ) -> Network<f32> {
     network!(
         Dot::new(random_matrix((input_size, hidden_size), rng), SGD::new(LEARNING_RATE)),
-        Add::zero(hidden_size, SGD::new(LEARNING_RATE)),
+        Add::new(Array1::zeros(hidden_size), SGD::new(LEARNING_RATE)),
         Relu::new(),
         Dot::new(random_matrix((hidden_size, output_size), rng), SGD::new(LEARNING_RATE)),
-        Add::zero(output_size, SGD::new(LEARNING_RATE));
+        Add::new(Array1::zeros(output_size), SGD::new(LEARNING_RATE));
         SoftmaxWithLoss::new()
     )
 }
@@ -250,10 +250,6 @@ struct Add {
 impl Add {
     fn new(bias: Array1<f32>, optimizer: SGD<f32>) -> Self {
         Self { bias, optimizer }
-    }
-
-    fn zero(shape: usize, optimizer: SGD<f32>) -> Self {
-        Self::new(Array1::zeros(shape), optimizer)
     }
 }
 
