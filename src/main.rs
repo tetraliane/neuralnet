@@ -407,9 +407,7 @@ where
                 .max_by(|a, b| a.partial_cmp(b).expect("NaN found"))
                 .expect("Data is empty");
             let exp_row = (&row - max).mapv(|v| v.exp());
-            let exp_sum = exp_row
-                .iter()
-                .fold(V::zero(), |a, b| a + *b);
+            let exp_sum = exp_row.iter().fold(V::zero(), |a, b| a + *b);
             exp_row / exp_sum
         })
         .collect::<Array1<_>>()
