@@ -77,9 +77,15 @@ fn random_matrix<R: Rng>(shape: (usize, usize), rng: &mut R) -> Array2<f32> {
         .unwrap()
 }
 
-macro_rules! box_vec {
-    ( $( $x:expr ),+ $(,)? ) => {
-        vec![$( Box::new($x) ),+]
+macro_rules! network {
+    ( $head:expr; $last_layer:expr ) => {
+        Network::new(Box::new($head), Box::new($last_layer))
+    };
+    ( $head:expr, $( $tail:expr ),+ ; $last_layer:expr ) => {
+        Network::new(
+            Box::new($head),
+            Box::new(network!($($tail),* ; $last_layer))
+        )
     };
 }
 
@@ -89,17 +95,14 @@ fn make_two_layer_net<R: Rng>(
     output_size: usize,
     rng: &mut R,
 ) -> Network<f32> {
-    Network::from_layers(
-        box_vec!(
-            Dot::random((input_size, hidden_size), rng),
-            Add::zero(hidden_size),
-            Relu::new(),
-            Dot::random((hidden_size, output_size), rng),
-            Add::zero(output_size),
-        ),
-        Box::new(SoftmaxWithLoss::new()),
+    network!(
+        Dot::random((input_size, hidden_size), rng),
+        Add::zero(hidden_size),
+        Relu::new(),
+        Dot::random((hidden_size, output_size), rng),
+        Add::zero(output_size);
+        SoftmaxWithLoss::new()
     )
-    .expect("Failed to make network")
 }
 
 trait Layer<Input, Output> {
@@ -127,28 +130,6 @@ impl<V> Network<V> {
         tail: Box<dyn Fittable<Array2<V>, Array2<V>, V>>,
     ) -> Self {
         Self { head, tail }
-    }
-}
-
-impl Network<f32> {
-    fn from_layers(
-        mut layers: Vec<Box<dyn Layer<Array2<f32>, Array2<f32>>>>,
-        last_layer: Box<dyn Fittable<Array2<f32>, Array2<f32>, f32>>,
-    ) -> Option<Self> {
-        if layers.is_empty() {
-            return None;
-        }
-
-        let head = layers.remove(0);
-        let tail = layers;
-        Some(Self::new(
-            head,
-            if tail.is_empty() {
-                last_layer
-            } else {
-                Box::new(Self::from_layers(tail, last_layer).expect("Failed to make network"))
-            },
-        ))
     }
 }
 
