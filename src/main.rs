@@ -243,7 +243,7 @@ where
 
 struct Add<V, O: Optimizer<V, Dim<[usize; 1]>>> {
     bias: Array1<V>,
-    optimizer: O
+    optimizer: O,
 }
 
 impl<V, O: Optimizer<V, Dim<[usize; 1]>>> Add<V, O> {
@@ -255,7 +255,7 @@ impl<V, O: Optimizer<V, Dim<[usize; 1]>>> Add<V, O> {
 impl<V, O> Layer<Array2<V>, Array2<V>> for Add<V, O>
 where
     V: LinalgScalar,
-    O: Optimizer<V, Dim<[usize; 1]>>
+    O: Optimizer<V, Dim<[usize; 1]>>,
 {
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input + &self.bias
@@ -296,7 +296,11 @@ where
     fn backward(&self, grad_out: &Array2<V>, input: &Array2<V>) -> Array2<V> {
         let mut dx = grad_out.to_owned();
         dx.zip_mut_with(input, |dout_i, xi| {
-            *dout_i = if *xi <= V::zero() { V::zero() } else { dout_i.clone() }
+            *dout_i = if *xi <= V::zero() {
+                V::zero()
+            } else {
+                dout_i.clone()
+            }
         });
         dx
     }
