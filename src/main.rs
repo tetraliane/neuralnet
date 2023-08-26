@@ -2,6 +2,7 @@ use std::ops::{Mul, SubAssign};
 
 use mnist::{MnistBuilder, NormalizedMnist};
 use ndarray::{Array, Array1, Array2, Axis, Dim, Dimension, LinalgScalar};
+use num_traits::Zero;
 use rand::{distributions::Uniform, seq::SliceRandom, Rng};
 
 const TRAINING_LEN: usize = 60000;
@@ -278,20 +279,29 @@ impl Relu {
     }
 }
 
-impl Layer<Array2<f32>, Array2<f32>> for Relu {
-    fn forward(&self, input: &Array2<f32>) -> Array2<f32> {
-        input.map(|xi| xi.max(0.))
+impl<V> Layer<Array2<V>, Array2<V>> for Relu
+where
+    V: PartialOrd + Clone + Zero,
+{
+    fn forward(&self, input: &Array2<V>) -> Array2<V> {
+        input.map(|xi| {
+            if xi > &V::zero() {
+                xi.clone()
+            } else {
+                V::zero()
+            }
+        })
     }
 
-    fn backward(&self, grad_out: &Array2<f32>, input: &FMat) -> Array2<f32> {
+    fn backward(&self, grad_out: &Array2<V>, input: &Array2<V>) -> Array2<V> {
         let mut dx = grad_out.to_owned();
         dx.zip_mut_with(input, |dout_i, xi| {
-            *dout_i = if *xi <= 0. { 0. } else { *dout_i }
+            *dout_i = if *xi <= V::zero() { V::zero() } else { dout_i.clone() }
         });
         dx
     }
 
-    fn learn(&mut self, _: &Array2<f32>, _: &Array2<f32>) {}
+    fn learn(&mut self, _: &Array2<V>, _: &Array2<V>) {}
 }
 
 struct SoftmaxWithLoss {}
