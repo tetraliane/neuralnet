@@ -415,6 +415,12 @@ where
         .expect("Failed to collect values into an array")
 }
 
-fn cross_entropy_error(y: &Array2<f32>, t: &Array2<f32>) -> f32 {
-    y.iter().zip(t).map(|(yi, ti)| -1. * (*ti) * yi.ln()).sum()
+fn cross_entropy_error<V>(y: &Array2<V>, t: &Array2<V>) -> V
+where
+    V: Float,
+{
+    y.iter()
+        .zip(t)
+        .map(|(yi, ti)| -(*ti) * yi.ln())
+        .fold(V::zero(), |a, b| a + b)
 }
