@@ -98,11 +98,11 @@ fn make_two_layer_net<R: Rng>(
     rng: &mut R,
 ) -> Network<f32> {
     network!(
-        Dot::new(random_matrix((input_size, hidden_size), rng), SGD::new(LEARNING_RATE)),
-        Add::new(Array1::zeros(hidden_size), SGD::new(LEARNING_RATE)),
+        Dot::new(random_matrix((input_size, hidden_size), rng), Sgd::new(LEARNING_RATE)),
+        Add::new(Array1::zeros(hidden_size), Sgd::new(LEARNING_RATE)),
         Relu::new(),
-        Dot::new(random_matrix((hidden_size, output_size), rng), SGD::new(LEARNING_RATE)),
-        Add::new(Array1::zeros(output_size), SGD::new(LEARNING_RATE));
+        Dot::new(random_matrix((hidden_size, output_size), rng), Sgd::new(LEARNING_RATE)),
+        Add::new(Array1::zeros(output_size), Sgd::new(LEARNING_RATE));
         SoftmaxWithLoss::new()
     )
 }
@@ -191,17 +191,17 @@ trait Optimizer<A, D> {
     fn update(&mut self, param: &mut Array<A, D>, grad: Array<A, D>);
 }
 
-struct SGD<V> {
+struct Sgd<V> {
     learning_rate: V,
 }
 
-impl<V> SGD<V> {
+impl<V> Sgd<V> {
     fn new(learning_rate: V) -> Self {
         Self { learning_rate }
     }
 }
 
-impl<V, D> Optimizer<V, D> for SGD<V>
+impl<V, D> Optimizer<V, D> for Sgd<V>
 where
     D: Dimension,
     V: Mul<Array<V, D>, Output = Array<V, D>> + SubAssign + Clone,
