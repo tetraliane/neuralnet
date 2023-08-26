@@ -96,10 +96,10 @@ fn make_two_layer_net<R: Rng>(
     rng: &mut R,
 ) -> Network<f32> {
     network!(
-        Dot::random((input_size, hidden_size), rng),
+        Dot::new(random_matrix((input_size, hidden_size), rng)),
         Add::zero(hidden_size),
         Relu::new(),
-        Dot::random((hidden_size, output_size), rng),
+        Dot::new(random_matrix((hidden_size, output_size), rng)),
         Add::zero(output_size);
         SoftmaxWithLoss::new()
     )
@@ -193,10 +193,6 @@ struct Dot<V> {
 impl<V> Dot<V> {
     fn new(wgt: Array2<V>) -> Self {
         Self { wgt }
-    }
-
-    fn random<R: Rng>(shape: (usize, usize), rng: &mut R) -> Self {
-        Self::new(random_matrix(shape, rng))
     }
 }
 
