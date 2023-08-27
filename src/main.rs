@@ -1,7 +1,7 @@
 use std::ops::{Mul, SubAssign};
 
 use mnist::{MnistBuilder, NormalizedMnist};
-use ndarray::{Array, Array1, Array2, Axis, Dim, Dimension, LinalgScalar, ScalarOperand};
+use ndarray::{Array, Array1, Array2, Axis, Dimension, Ix1, Ix2, LinalgScalar, ScalarOperand};
 use num_traits::{Float, Zero};
 use rand::{distributions::Uniform, seq::SliceRandom, Rng};
 
@@ -213,18 +213,18 @@ where
     }
 }
 
-struct Dot<V, O: Optimizer<V, Dim<[usize; 2]>>> {
+struct Dot<V, O: Optimizer<V, Ix2>> {
     wgt: Array2<V>,
     optimizer: O,
 }
 
-impl<V, O: Optimizer<V, Dim<[usize; 2]>>> Dot<V, O> {
+impl<V, O: Optimizer<V, Ix2>> Dot<V, O> {
     fn new(wgt: Array2<V>, optimizer: O) -> Self {
         Self { wgt, optimizer }
     }
 }
 
-impl<V, O: Optimizer<V, Dim<[usize; 2]>>> Layer<Array2<V>, Array2<V>> for Dot<V, O>
+impl<V, O: Optimizer<V, Ix2>> Layer<Array2<V>, Array2<V>> for Dot<V, O>
 where
     V: LinalgScalar,
 {
@@ -242,12 +242,12 @@ where
     }
 }
 
-struct Add<V, O: Optimizer<V, Dim<[usize; 1]>>> {
+struct Add<V, O: Optimizer<V, Ix1>> {
     bias: Array1<V>,
     optimizer: O,
 }
 
-impl<V, O: Optimizer<V, Dim<[usize; 1]>>> Add<V, O> {
+impl<V, O: Optimizer<V, Ix1>> Add<V, O> {
     fn new(bias: Array1<V>, optimizer: O) -> Self {
         Self { bias, optimizer }
     }
@@ -256,7 +256,7 @@ impl<V, O: Optimizer<V, Dim<[usize; 1]>>> Add<V, O> {
 impl<V, O> Layer<Array2<V>, Array2<V>> for Add<V, O>
 where
     V: LinalgScalar,
-    O: Optimizer<V, Dim<[usize; 1]>>,
+    O: Optimizer<V, Ix1>,
 {
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input + &self.bias
