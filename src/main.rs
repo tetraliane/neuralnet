@@ -347,7 +347,7 @@ impl CrossEntropy {
 
 impl<V> Fittable<Array2<V>, Array2<V>, V> for CrossEntropy
 where
-    V: Float + ScalarOperand
+    V: Float + ScalarOperand,
 {
     fn predict(&self, input: &Array2<V>) -> Array2<V> {
         input.to_owned()
@@ -358,7 +358,8 @@ where
     }
 
     fn fit(&mut self, input: &Array2<V>, teacher: &Array2<V>) -> Array2<V> {
-        let batch_size = V::from(teacher.dim().0).expect("Failed to cast usize into the value type");
+        let batch_size =
+            V::from(teacher.dim().0).expect("Failed to cast usize into the value type");
         -teacher.to_owned() / input / batch_size
     }
 }
@@ -370,28 +371,38 @@ impl SoftmaxWithLoss {
         Self {}
     }
 
-    fn loss(&self, input: &Array2<f32>, teacher: &Array2<f32>) -> (Array2<f32>, f32) {
+    fn loss<V>(&self, input: &Array2<V>, teacher: &Array2<V>) -> (Array2<V>, V)
+    where
+        V: Float + ScalarOperand,
+    {
         let y = softmax(input);
         let error = cross_entropy_error(&y, teacher);
         (y, error)
     }
 
-    fn backward(&self, y: &Array2<f32>, teacher: &Array2<f32>) -> Array2<f32> {
-        let batch_size = teacher.dim().0;
-        (y - teacher) / (batch_size as f32)
+    fn backward<V>(&self, y: &Array2<V>, teacher: &Array2<V>) -> Array2<V>
+    where
+        V: Float + ScalarOperand,
+    {
+        let batch_size =
+            V::from(teacher.dim().0).expect("Failed to cast usize into the value type");
+        (y - teacher.to_owned()) / batch_size
     }
 }
 
-impl Fittable<FMat, FMat, f32> for SoftmaxWithLoss {
-    fn predict(&self, input: &FMat) -> FMat {
+impl<V> Fittable<Array2<V>, Array2<V>, V> for SoftmaxWithLoss
+where
+    V: Float + ScalarOperand,
+{
+    fn predict(&self, input: &Array2<V>) -> Array2<V> {
         input.to_owned()
     }
 
-    fn loss(&self, input: &FMat, teacher: &FMat) -> f32 {
+    fn loss(&self, input: &Array2<V>, teacher: &Array2<V>) -> V {
         self.loss(input, teacher).1
     }
 
-    fn fit(&mut self, input: &Array2<f32>, teacher: &Array2<f32>) -> Array2<f32> {
+    fn fit(&mut self, input: &Array2<V>, teacher: &Array2<V>) -> Array2<V> {
         let (y, _) = self.loss(input, teacher);
         self.backward(&y, teacher)
     }
