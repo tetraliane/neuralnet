@@ -345,18 +345,21 @@ impl CrossEntropy {
     }
 }
 
-impl Fittable<FMat, FMat, f32> for CrossEntropy {
-    fn predict(&self, input: &FMat) -> FMat {
+impl<V> Fittable<Array2<V>, Array2<V>, V> for CrossEntropy
+where
+    V: Float + ScalarOperand
+{
+    fn predict(&self, input: &Array2<V>) -> Array2<V> {
         input.to_owned()
     }
 
-    fn loss(&self, input: &FMat, teacher: &FMat) -> f32 {
+    fn loss(&self, input: &Array2<V>, teacher: &Array2<V>) -> V {
         cross_entropy_error(input, teacher)
     }
 
-    fn fit(&mut self, input: &FMat, teacher: &FMat) -> FMat {
-        let batch_size = teacher.dim().0;
-        -teacher / input / (batch_size as f32)
+    fn fit(&mut self, input: &Array2<V>, teacher: &Array2<V>) -> Array2<V> {
+        let batch_size = V::from(teacher.dim().0).expect("Failed to cast usize into the value type");
+        -teacher.to_owned() / input / batch_size
     }
 }
 
