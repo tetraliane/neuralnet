@@ -21,11 +21,13 @@ impl<V, O> Add<V, O> {
     }
 }
 
-impl<V, O> Layer<Array2<V>, Array2<V>> for Add<V, O>
+impl<V, O> Layer<Array2<V>> for Add<V, O>
 where
     V: LinalgScalar,
     O: Optimizer<V, Ix1>,
 {
+    type Output = Array2<V>;
+
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input + &self.bias
     }

@@ -30,10 +30,13 @@ impl SoftmaxWithLoss {
     }
 }
 
-impl<V> Terminal<Array2<V>, Array2<V>, V> for SoftmaxWithLoss
+impl<V> Terminal<Array2<V>> for SoftmaxWithLoss
 where
     V: Float + ScalarOperand,
 {
+    type Output = Array2<V>;
+    type Loss = V;
+
     fn predict(&self, input: &Array2<V>) -> Array2<V> {
         input.to_owned()
     }

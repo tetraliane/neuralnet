@@ -12,7 +12,9 @@ impl Softmax {
     }
 }
 
-impl<V: Float + ScalarOperand> Layer<Array2<V>, Array2<V>> for Softmax {
+impl<V: Float + ScalarOperand> Layer<Array2<V>> for Softmax {
+    type Output = Array2<V>;
+
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         softmax(input)
     }

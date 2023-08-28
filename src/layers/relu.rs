@@ -11,10 +11,12 @@ impl Relu {
     }
 }
 
-impl<V> Layer<Array2<V>, Array2<V>> for Relu
+impl<V> Layer<Array2<V>> for Relu
 where
     V: PartialOrd + Clone + Zero,
 {
+    type Output = Array2<V>;
+
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input.map(|xi| {
             if xi > &V::zero() {

@@ -3,14 +3,14 @@ use ndarray::{Array2, ArrayView1, Axis};
 use crate::traits::{Layer, Terminal};
 
 pub struct Network<V> {
-    head: Box<dyn Layer<Array2<V>, Array2<V>>>,
-    tail: Box<dyn Terminal<Array2<V>, Array2<V>, V>>,
+    head: Box<dyn Layer<Array2<V>, Output = Array2<V>>>,
+    tail: Box<dyn Terminal<Array2<V>, Output = Array2<V>, Loss = V>>,
 }
 
 impl<V> Network<V> {
     pub fn new(
-        head: Box<dyn Layer<Array2<V>, Array2<V>>>,
-        tail: Box<dyn Terminal<Array2<V>, Array2<V>, V>>,
+        head: Box<dyn Layer<Array2<V>, Output = Array2<V>>>,
+        tail: Box<dyn Terminal<Array2<V>, Output = Array2<V>, Loss = V>>,
     ) -> Self {
         Self { head, tail }
     }
@@ -51,7 +51,10 @@ where
     }
 }
 
-impl<V> Terminal<Array2<V>, Array2<V>, V> for Network<V> {
+impl<V> Terminal<Array2<V>> for Network<V> {
+    type Output = Array2<V>;
+    type Loss = V;
+
     fn predict(&self, input: &Array2<V>) -> Array2<V> {
         self.tail.predict(&self.head.forward(input))
     }

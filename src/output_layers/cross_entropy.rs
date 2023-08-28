@@ -12,10 +12,13 @@ impl CrossEntropy {
     }
 }
 
-impl<V> Terminal<Array2<V>, Array2<V>, V> for CrossEntropy
+impl<V> Terminal<Array2<V>> for CrossEntropy
 where
     V: Float + ScalarOperand,
 {
+    type Output = Array2<V>;
+    type Loss = V;
+
     fn predict(&self, input: &Array2<V>) -> Array2<V> {
         input.to_owned()
     }
