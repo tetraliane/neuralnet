@@ -1,23 +1,20 @@
 use ndarray::Array;
 
-pub trait Layer<I> {
-    type Output;
-    fn forward(&self, input: &I) -> Self::Output;
-    fn backward(&self, grad_out: &Self::Output, input: &I) -> I;
-    fn learn(&mut self, grad_out: &Self::Output, input: &I);
+pub trait Layer<T, D> {
+    fn forward(&self, input: &Array<T, D>) -> Array<T, D>;
+    fn backward(&self, grad_out: &Array<T, D>, input: &Array<T, D>) -> Array<T, D>;
+    fn learn(&mut self, grad_out: &Array<T, D>, input: &Array<T, D>);
 }
 
-pub trait Terminal<I> {
-    type Output;
-    type Loss;
-    fn predict(&self, input: &I) -> Self::Output;
-    fn loss(&self, input: &I, teacher: &Self::Output) -> Self::Loss;
-    fn fit(&mut self, input: &I, teacher: &Self::Output) -> I;
+pub trait Terminal<T, D> {
+    fn predict(&self, input: &Array<T, D>) -> Array<T, D>;
+    fn loss(&self, input: &Array<T, D>, teacher: &Array<T, D>) -> T;
+    fn fit(&mut self, input: &Array<T, D>, teacher: &Array<T, D>) -> Array<T, D>;
 
-    fn layer_at(&self, _: usize) -> Option<&dyn Layer<I, Output = I>> {
+    fn layer_at(&self, _: usize) -> Option<&dyn Layer<T, D>> {
         None
     }
-    fn layer_mut_at(&mut self, _: usize) -> Option<&mut dyn Layer<I, Output = I>> {
+    fn layer_mut_at(&mut self, _: usize) -> Option<&mut dyn Layer<T, D>> {
         None
     }
 }

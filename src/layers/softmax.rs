@@ -1,4 +1,4 @@
-use ndarray::{Array1, Array2, Axis, ScalarOperand};
+use ndarray::{Array1, Array2, Axis, ScalarOperand, Ix2};
 use num_traits::Float;
 
 use crate::traits::Layer;
@@ -12,9 +12,7 @@ impl Softmax {
     }
 }
 
-impl<V: Float + ScalarOperand> Layer<Array2<V>> for Softmax {
-    type Output = Array2<V>;
-
+impl<V: Float + ScalarOperand> Layer<V, Ix2> for Softmax {
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         softmax(input)
     }
