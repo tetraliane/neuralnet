@@ -15,9 +15,6 @@ pub trait Terminal<T, D> {
     fn layer_at(&self, _: usize) -> Option<&dyn Layer<T, D>> {
         None
     }
-    fn layer_mut_at(&mut self, _: usize) -> Option<&mut dyn Layer<T, D>> {
-        None
-    }
 }
 
 pub trait Optimizer<A, D> {

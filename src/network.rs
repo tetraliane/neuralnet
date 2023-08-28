@@ -75,12 +75,4 @@ impl<V> Terminal<V, Ix2> for Network<V> {
             self.tail.layer_at(index - 1)
         }
     }
-
-    fn layer_mut_at(&mut self, index: usize) -> Option<&mut dyn Layer<V, Ix2>> {
-        if index == 0 {
-            Some(&mut *self.head)
-        } else {
-            self.tail.layer_mut_at(index - 1)
-        }
-    }
 }
