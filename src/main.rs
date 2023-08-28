@@ -1,7 +1,9 @@
 use std::ops::{Mul, SubAssign};
 
 use mnist::{MnistBuilder, NormalizedMnist};
-use ndarray::{Array, Array1, Array2, Axis, Dimension, Ix1, Ix2, LinalgScalar, ScalarOperand};
+use ndarray::{
+    Array, Array1, Array2, ArrayView1, Axis, Dimension, Ix1, Ix2, LinalgScalar, ScalarOperand,
+};
 use num_traits::{Float, Zero};
 use rand::{
     distributions::{Distribution, Standard},
@@ -64,8 +66,8 @@ fn main() {
         trn_loss_list.push(net.loss(&x_batch, &t_batch));
 
         if i % iter_per_epoch == 0 {
-            let trn_acc = net.accuracy(&x_trn, &t_trn);
-            let test_acc = net.accuracy(&x_test, &t_test);
+            let trn_acc = net.accuracy_by_key(&x_trn, &t_trn, |data| max_position(data));
+            let test_acc = net.accuracy_by_key(&x_test, &t_test, |data| max_position(data));
             trn_acc_list.push(trn_acc);
             test_acc_list.push(test_acc);
             println!("{}, {}", trn_acc, test_acc);
@@ -146,34 +148,46 @@ impl<V> Network<V>
 where
     V: PartialOrd,
 {
-    fn accuracy(&mut self, input: &Array2<V>, teacher: &Array2<V>) -> f32 {
+    fn accuracy(&mut self, input: &Array2<V>, teacher: &Array2<V>) -> f64
+    where
+        V: PartialEq,
+    {
+        self.accuracy_by(input, teacher, |y, t| y == t)
+    }
+
+    fn accuracy_by<F>(&mut self, input: &Array2<V>, teacher: &Array2<V>, predicate: F) -> f64
+    where
+        F: Fn(&ArrayView1<V>, &ArrayView1<V>) -> bool,
+    {
         let y = self.predict(input);
 
-        let a = teacher
+        let count = y
             .axis_iter(Axis(0))
-            .map(|data| {
-                data.iter()
-                    .enumerate()
-                    .max_by(|(_, v), (_, w)| v.partial_cmp(w).unwrap())
-                    .unwrap()
-                    .0
-            })
-            .collect::<Vec<_>>();
-
-        let count = a
-            .into_iter()
-            .zip(y.axis_iter(Axis(0)))
-            .filter(|(t_max, yi)| {
-                let y_max = yi
-                    .iter()
-                    .enumerate()
-                    .max_by(|(_, v), (_, w)| v.partial_cmp(w).unwrap())
-                    .map(|(i, _)| i);
-                *t_max == y_max.unwrap()
-            })
+            .zip(teacher.axis_iter(Axis(0)))
+            .filter(|(yi, ti)| predicate(yi, ti))
             .count();
-        count as f32 / input.dim().0 as f32
+
+        count as f64 / input.dim().0 as f64
     }
+
+    fn accuracy_by_key<V2, F>(&mut self, input: &Array2<V>, teacher: &Array2<V>, f: F) -> f64
+    where
+        V2: PartialEq,
+        F: Fn(&ArrayView1<V>) -> V2,
+    {
+        self.accuracy_by(input, teacher, |y, t| f(y) == f(t))
+    }
+}
+
+fn max_position<V, I>(x: I) -> Option<usize>
+where
+    V: PartialOrd,
+    I: IntoIterator<Item = V>,
+{
+    x.into_iter()
+        .enumerate()
+        .max_by(|(_, xi), (_, xj)| xi.partial_cmp(xj).expect("Comparing failed"))
+        .map(|(i, _)| i)
 }
 
 impl<V> Fittable<Array2<V>, Array2<V>, V> for Network<V> {
