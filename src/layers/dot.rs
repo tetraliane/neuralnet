@@ -29,6 +29,10 @@ where
     V: LinalgScalar,
     O: Optimizer<V, Ix2>,
 {
+    fn params(&self) -> Option<ndarray::Array<V, ndarray::IxDyn>> {
+        Some(self.wgt.clone().into_dyn())
+    }
+
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input.dot(&self.wgt)
     }

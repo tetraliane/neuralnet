@@ -16,6 +16,10 @@ where
     V: PartialOrd + Clone + Zero,
     D: Dimension,
 {
+    fn params(&self) -> Option<Array<V, ndarray::IxDyn>> {
+        None
+    }
+
     fn forward(&self, input: &Array<V, D>) -> Array<V, D> {
         input.map(|xi| {
             if xi > &V::zero() {

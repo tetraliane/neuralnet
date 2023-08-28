@@ -1,6 +1,7 @@
-use ndarray::Array;
+use ndarray::{Array, IxDyn};
 
 pub trait Layer<T, D> {
+    fn params(&self) -> Option<Array<T, IxDyn>>;
     fn forward(&self, input: &Array<T, D>) -> Array<T, D>;
     fn backward(&self, grad_out: &Array<T, D>, input: &Array<T, D>) -> Array<T, D>;
     fn learn(&mut self, grad_out: &Array<T, D>, input: &Array<T, D>);

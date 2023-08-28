@@ -1,4 +1,4 @@
-use ndarray::{Array1, Array2, Axis, Ix1, LinalgScalar, Ix2};
+use ndarray::{Array1, Array2, Axis, Ix1, Ix2, LinalgScalar};
 use num_traits::Zero;
 
 use crate::traits::{Layer, Optimizer};
@@ -26,6 +26,10 @@ where
     V: LinalgScalar,
     O: Optimizer<V, Ix1>,
 {
+    fn params(&self) -> Option<ndarray::Array<V, ndarray::IxDyn>> {
+        Some(self.bias.clone().into_dyn())
+    }
+
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input + &self.bias
     }
