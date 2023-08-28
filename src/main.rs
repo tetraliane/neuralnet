@@ -1,14 +1,25 @@
-use std::ops::{Mul, SubAssign};
+mod layers;
+mod network;
+mod optimizers;
+mod output_layers;
+mod traits;
+mod utils;
 
 use mnist::{MnistBuilder, NormalizedMnist};
-use ndarray::{
-    Array, Array1, Array2, ArrayView1, Axis, Dimension, Ix1, Ix2, LinalgScalar, ScalarOperand,
-};
-use num_traits::{Float, Zero};
+use ndarray::{Array1, Array2, Axis, ScalarOperand};
+use num_traits::Float;
 use rand::{
     distributions::{Distribution, Standard},
     seq::SliceRandom,
     Rng,
+};
+
+use crate::{
+    layers::{Add, Dot, Relu, Softmax},
+    network::Network,
+    optimizers::Sgd,
+    output_layers::CrossEntropy,
+    traits::Terminal,
 };
 
 const TRAINING_LEN: usize = 60000;
@@ -118,67 +129,6 @@ fn make_two_layer_net<R: Rng>(
     )
 }
 
-trait Layer<Input, Output> {
-    fn forward(&self, input: &Input) -> Output;
-    fn backward(&self, grad_out: &Output, input: &Input) -> Input;
-    fn learn(&mut self, grad_out: &Output, input: &Input);
-}
-
-trait Fittable<Input, Output, Loss> {
-    fn predict(&self, input: &Input) -> Output;
-    fn loss(&self, input: &Input, teacher: &Output) -> Loss;
-    fn fit(&mut self, input: &Input, teacher: &Output) -> Input;
-}
-
-struct Network<V> {
-    head: Box<dyn Layer<Array2<V>, Array2<V>>>,
-    tail: Box<dyn Fittable<Array2<V>, Array2<V>, V>>,
-}
-
-impl<V> Network<V> {
-    fn new(
-        head: Box<dyn Layer<Array2<V>, Array2<V>>>,
-        tail: Box<dyn Fittable<Array2<V>, Array2<V>, V>>,
-    ) -> Self {
-        Self { head, tail }
-    }
-}
-
-impl<V> Network<V>
-where
-    V: PartialOrd,
-{
-    fn accuracy(&mut self, input: &Array2<V>, teacher: &Array2<V>) -> f64
-    where
-        V: PartialEq,
-    {
-        self.accuracy_by(input, teacher, |y, t| y == t)
-    }
-
-    fn accuracy_by<F>(&mut self, input: &Array2<V>, teacher: &Array2<V>, predicate: F) -> f64
-    where
-        F: Fn(&ArrayView1<V>, &ArrayView1<V>) -> bool,
-    {
-        let y = self.predict(input);
-
-        let count = y
-            .axis_iter(Axis(0))
-            .zip(teacher.axis_iter(Axis(0)))
-            .filter(|(yi, ti)| predicate(yi, ti))
-            .count();
-
-        count as f64 / input.dim().0 as f64
-    }
-
-    fn accuracy_by_key<V2, F>(&mut self, input: &Array2<V>, teacher: &Array2<V>, f: F) -> f64
-    where
-        V2: PartialEq,
-        F: Fn(&ArrayView1<V>) -> V2,
-    {
-        self.accuracy_by(input, teacher, |y, t| f(y) == f(t))
-    }
-}
-
 fn max_position<V, I>(x: I) -> Option<usize>
 where
     V: PartialOrd,
@@ -188,271 +138,4 @@ where
         .enumerate()
         .max_by(|(_, xi), (_, xj)| xi.partial_cmp(xj).expect("Comparing failed"))
         .map(|(i, _)| i)
-}
-
-impl<V> Fittable<Array2<V>, Array2<V>, V> for Network<V> {
-    fn predict(&self, input: &Array2<V>) -> Array2<V> {
-        self.tail.predict(&self.head.forward(input))
-    }
-
-    fn loss(&self, input: &Array2<V>, teacher: &Array2<V>) -> V {
-        self.tail.loss(&self.head.forward(input), teacher)
-    }
-
-    fn fit(&mut self, input: &Array2<V>, teacher: &Array2<V>) -> Array2<V> {
-        let y = self.head.forward(input);
-        let dy = self.tail.fit(&y, teacher);
-        let dx = self.head.backward(&dy, input);
-        self.head.learn(&dy, input);
-        dx
-    }
-}
-
-trait Optimizer<A, D> {
-    fn update(&mut self, param: &mut Array<A, D>, grad: Array<A, D>);
-}
-
-struct Sgd<V> {
-    learning_rate: V,
-}
-
-impl<V> Sgd<V> {
-    fn new(learning_rate: V) -> Self {
-        Self { learning_rate }
-    }
-}
-
-impl<V, D> Optimizer<V, D> for Sgd<V>
-where
-    D: Dimension,
-    V: Mul<Array<V, D>, Output = Array<V, D>> + SubAssign + Clone,
-{
-    fn update(&mut self, param: &mut Array<V, D>, grad: Array<V, D>) {
-        *param -= &(self.learning_rate.clone() * grad);
-    }
-}
-
-struct Dot<V, O> {
-    wgt: Array2<V>,
-    optimizer: O,
-}
-
-impl<V, O> Dot<V, O> {
-    fn new(wgt: Array2<V>, optimizer: O) -> Self {
-        Self { wgt, optimizer }
-    }
-}
-
-impl<V, O> Layer<Array2<V>, Array2<V>> for Dot<V, O>
-where
-    V: LinalgScalar,
-    O: Optimizer<V, Ix2>,
-{
-    fn forward(&self, input: &Array2<V>) -> Array2<V> {
-        input.dot(&self.wgt)
-    }
-
-    fn backward(&self, grad_out: &Array2<V>, _: &Array2<V>) -> Array2<V> {
-        grad_out.dot(&self.wgt.t())
-    }
-
-    fn learn(&mut self, grad_out: &Array2<V>, input: &Array2<V>) {
-        self.optimizer
-            .update(&mut self.wgt, input.t().dot(grad_out))
-    }
-}
-
-struct Add<V, O> {
-    bias: Array1<V>,
-    optimizer: O,
-}
-
-impl<V, O> Add<V, O> {
-    fn new(bias: Array1<V>, optimizer: O) -> Self {
-        Self { bias, optimizer }
-    }
-}
-
-impl<V, O> Layer<Array2<V>, Array2<V>> for Add<V, O>
-where
-    V: LinalgScalar,
-    O: Optimizer<V, Ix1>,
-{
-    fn forward(&self, input: &Array2<V>) -> Array2<V> {
-        input + &self.bias
-    }
-
-    fn backward(&self, grad_out: &Array2<V>, _: &Array2<V>) -> Array2<V> {
-        grad_out.to_owned()
-    }
-
-    fn learn(&mut self, grad_out: &Array2<V>, _: &Array2<V>) {
-        self.optimizer
-            .update(&mut self.bias, grad_out.sum_axis(Axis(0)))
-    }
-}
-
-struct Relu {}
-
-impl Relu {
-    fn new() -> Self {
-        Self {}
-    }
-}
-
-impl<V> Layer<Array2<V>, Array2<V>> for Relu
-where
-    V: PartialOrd + Clone + Zero,
-{
-    fn forward(&self, input: &Array2<V>) -> Array2<V> {
-        input.map(|xi| {
-            if xi > &V::zero() {
-                xi.clone()
-            } else {
-                V::zero()
-            }
-        })
-    }
-
-    fn backward(&self, grad_out: &Array2<V>, input: &Array2<V>) -> Array2<V> {
-        let mut dx = grad_out.to_owned();
-        dx.zip_mut_with(input, |dout_i, xi| {
-            *dout_i = if *xi <= V::zero() {
-                V::zero()
-            } else {
-                dout_i.clone()
-            }
-        });
-        dx
-    }
-
-    fn learn(&mut self, _: &Array2<V>, _: &Array2<V>) {}
-}
-
-struct Softmax {}
-
-impl Softmax {
-    fn new() -> Self {
-        Self {}
-    }
-}
-
-impl<V: Float + ScalarOperand> Layer<Array2<V>, Array2<V>> for Softmax {
-    fn forward(&self, input: &Array2<V>) -> Array2<V> {
-        softmax(input)
-    }
-
-    fn backward(&self, grad_out: &Array2<V>, input: &Array2<V>) -> Array2<V> {
-        let output = self.forward(input);
-        let dot = output
-            .axis_iter(Axis(0))
-            .zip(grad_out.axis_iter(Axis(0)))
-            .map(|(out, grad)| out.dot(&grad))
-            .collect::<Array1<_>>()
-            .into_shape((output.dim().0, 1))
-            .expect("Failed to collect values into an array");
-        output * (grad_out - &dot)
-    }
-
-    fn learn(&mut self, _: &Array2<V>, _: &Array2<V>) {}
-}
-
-struct CrossEntropy {}
-
-impl CrossEntropy {
-    fn new() -> Self {
-        Self {}
-    }
-}
-
-impl<V> Fittable<Array2<V>, Array2<V>, V> for CrossEntropy
-where
-    V: Float + ScalarOperand,
-{
-    fn predict(&self, input: &Array2<V>) -> Array2<V> {
-        input.to_owned()
-    }
-
-    fn loss(&self, input: &Array2<V>, teacher: &Array2<V>) -> V {
-        cross_entropy_error(input, teacher)
-    }
-
-    fn fit(&mut self, input: &Array2<V>, teacher: &Array2<V>) -> Array2<V> {
-        let batch_size =
-            V::from(teacher.dim().0).expect("Failed to cast usize into the value type");
-        -teacher.to_owned() / input / batch_size
-    }
-}
-
-struct SoftmaxWithLoss {}
-
-impl SoftmaxWithLoss {
-    fn new() -> Self {
-        Self {}
-    }
-
-    fn loss<V>(&self, input: &Array2<V>, teacher: &Array2<V>) -> (Array2<V>, V)
-    where
-        V: Float + ScalarOperand,
-    {
-        let y = softmax(input);
-        let error = cross_entropy_error(&y, teacher);
-        (y, error)
-    }
-
-    fn backward<V>(&self, y: &Array2<V>, teacher: &Array2<V>) -> Array2<V>
-    where
-        V: Float + ScalarOperand,
-    {
-        let batch_size =
-            V::from(teacher.dim().0).expect("Failed to cast usize into the value type");
-        (y - teacher.to_owned()) / batch_size
-    }
-}
-
-impl<V> Fittable<Array2<V>, Array2<V>, V> for SoftmaxWithLoss
-where
-    V: Float + ScalarOperand,
-{
-    fn predict(&self, input: &Array2<V>) -> Array2<V> {
-        input.to_owned()
-    }
-
-    fn loss(&self, input: &Array2<V>, teacher: &Array2<V>) -> V {
-        self.loss(input, teacher).1
-    }
-
-    fn fit(&mut self, input: &Array2<V>, teacher: &Array2<V>) -> Array2<V> {
-        let (y, _) = self.loss(input, teacher);
-        self.backward(&y, teacher)
-    }
-}
-
-fn softmax<V>(x: &Array2<V>) -> Array2<V>
-where
-    V: Float + ScalarOperand,
-{
-    x.axis_iter(Axis(0))
-        .flat_map(|row| {
-            let max = *row
-                .iter()
-                .max_by(|a, b| a.partial_cmp(b).expect("NaN found"))
-                .expect("Data is empty");
-            let exp_row = (&row - max).mapv(|v| v.exp());
-            let exp_sum = exp_row.iter().fold(V::zero(), |a, b| a + *b);
-            exp_row / exp_sum
-        })
-        .collect::<Array1<_>>()
-        .into_shape(x.dim())
-        .expect("Failed to collect values into an array")
-}
-
-fn cross_entropy_error<V>(y: &Array2<V>, t: &Array2<V>) -> V
-where
-    V: Float,
-{
-    y.iter()
-        .zip(t)
-        .map(|(yi, ti)| -(*ti) * yi.ln())
-        .fold(V::zero(), |a, b| a + b)
 }
