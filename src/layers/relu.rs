@@ -1,4 +1,4 @@
-use ndarray::Array2;
+use ndarray::{Array2, Ix2};
 use num_traits::Zero;
 
 use crate::traits::Layer;
@@ -11,12 +11,10 @@ impl Relu {
     }
 }
 
-impl<V> Layer<Array2<V>> for Relu
+impl<V> Layer<V, Ix2> for Relu
 where
     V: PartialOrd + Clone + Zero,
 {
-    type Output = Array2<V>;
-
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input.map(|xi| {
             if xi > &V::zero() {

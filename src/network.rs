@@ -1,16 +1,16 @@
-use ndarray::{Array2, ArrayView1, Axis};
+use ndarray::{Array2, ArrayView1, Axis, Ix2};
 
 use crate::traits::{Layer, Terminal};
 
 pub struct Network<V> {
-    head: Box<dyn Layer<Array2<V>, Output = Array2<V>>>,
-    tail: Box<dyn Terminal<Array2<V>, Output = Array2<V>, Loss = V>>,
+    head: Box<dyn Layer<V, Ix2>>,
+    tail: Box<dyn Terminal<V, Ix2>>,
 }
 
 impl<V> Network<V> {
     pub fn new(
-        head: Box<dyn Layer<Array2<V>, Output = Array2<V>>>,
-        tail: Box<dyn Terminal<Array2<V>, Output = Array2<V>, Loss = V>>,
+        head: Box<dyn Layer<V, Ix2>>,
+        tail: Box<dyn Terminal<V, Ix2>>,
     ) -> Self {
         Self { head, tail }
     }
@@ -51,10 +51,7 @@ where
     }
 }
 
-impl<V> Terminal<Array2<V>> for Network<V> {
-    type Output = Array2<V>;
-    type Loss = V;
-
+impl<V> Terminal<V, Ix2> for Network<V> {
     fn predict(&self, input: &Array2<V>) -> Array2<V> {
         self.tail.predict(&self.head.forward(input))
     }
@@ -71,7 +68,7 @@ impl<V> Terminal<Array2<V>> for Network<V> {
         dx
     }
 
-    fn layer_at(&self, index: usize) -> Option<&dyn Layer<Array2<V>, Output = Array2<V>>> {
+    fn layer_at(&self, index: usize) -> Option<&dyn Layer<V, Ix2>> {
         if index == 0 {
             Some(&*self.head)
         } else {
@@ -79,7 +76,7 @@ impl<V> Terminal<Array2<V>> for Network<V> {
         }
     }
 
-    fn layer_mut_at(&mut self, index: usize) -> Option<&mut dyn Layer<Array2<V>, Output = Array2<V>>> {
+    fn layer_mut_at(&mut self, index: usize) -> Option<&mut dyn Layer<V, Ix2>> {
         if index == 0 {
             Some(&mut *self.head)
         } else {

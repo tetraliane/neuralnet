@@ -1,4 +1,4 @@
-use ndarray::{Array2, ScalarOperand};
+use ndarray::{Array2, ScalarOperand, Ix2};
 use num_traits::Float;
 
 use crate::traits::Terminal;
@@ -30,13 +30,10 @@ impl SoftmaxWithLoss {
     }
 }
 
-impl<V> Terminal<Array2<V>> for SoftmaxWithLoss
+impl<V> Terminal<V, Ix2> for SoftmaxWithLoss
 where
     V: Float + ScalarOperand,
 {
-    type Output = Array2<V>;
-    type Loss = V;
-
     fn predict(&self, input: &Array2<V>) -> Array2<V> {
         input.to_owned()
     }

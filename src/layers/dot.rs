@@ -24,13 +24,11 @@ impl<V, O> Dot<V, O> {
     }
 }
 
-impl<V, O> Layer<Array2<V>> for Dot<V, O>
+impl<V, O> Layer<V, Ix2> for Dot<V, O>
 where
     V: LinalgScalar,
     O: Optimizer<V, Ix2>,
 {
-    type Output = Array2<V>;
-
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input.dot(&self.wgt)
     }

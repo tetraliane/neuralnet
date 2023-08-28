@@ -1,4 +1,4 @@
-use ndarray::{Array2, ScalarOperand};
+use ndarray::{Array2, ScalarOperand, Ix2};
 use num_traits::Float;
 
 use crate::traits::Terminal;
@@ -12,13 +12,10 @@ impl CrossEntropy {
     }
 }
 
-impl<V> Terminal<Array2<V>> for CrossEntropy
+impl<V> Terminal<V, Ix2> for CrossEntropy
 where
     V: Float + ScalarOperand,
 {
-    type Output = Array2<V>;
-    type Loss = V;
-
     fn predict(&self, input: &Array2<V>) -> Array2<V> {
         input.to_owned()
     }
