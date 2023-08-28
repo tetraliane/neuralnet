@@ -6,13 +6,8 @@ mod traits;
 mod utils;
 
 use mnist::{MnistBuilder, NormalizedMnist};
-use ndarray::{Array1, Array2, Axis, ScalarOperand};
-use num_traits::Float;
-use rand::{
-    distributions::{Distribution, Standard},
-    seq::SliceRandom,
-    Rng,
-};
+use ndarray::{Array2, Axis};
+use rand::{seq::SliceRandom, Rng};
 
 use crate::{
     layers::{Add, Dot, Relu, Softmax},
@@ -86,20 +81,6 @@ fn main() {
     }
 }
 
-fn random_matrix<V, R>(shape: (usize, usize), std: V, rng: &mut R) -> Array2<V>
-where
-    V: Float + ScalarOperand,
-    Standard: Distribution<V>,
-    R: Rng,
-{
-    Array2::from_shape_vec(
-        shape,
-        rng.sample_iter(Standard).take(shape.0 * shape.1).collect(),
-    )
-    .expect("Failed to make the array")
-        * std
-}
-
 macro_rules! network {
     ( $head:expr; $last_layer:expr ) => {
         Network::new(Box::new($head), Box::new($last_layer))
@@ -119,11 +100,11 @@ fn make_two_layer_net<R: Rng>(
     rng: &mut R,
 ) -> Network<f32> {
     network!(
-        Dot::new(random_matrix((input_size, hidden_size), WGT_INIT_STD, rng), Sgd::new(LEARNING_RATE)),
-        Add::new(Array1::zeros(hidden_size), Sgd::new(LEARNING_RATE)),
+        Dot::new_random((input_size, hidden_size), Sgd::new(LEARNING_RATE), rng, WGT_INIT_STD),
+        Add::new_zero(hidden_size, Sgd::new(LEARNING_RATE)),
         Relu::new(),
-        Dot::new(random_matrix((hidden_size, output_size), WGT_INIT_STD, rng), Sgd::new(LEARNING_RATE)),
-        Add::new(Array1::zeros(output_size), Sgd::new(LEARNING_RATE)),
+        Dot::new_random((hidden_size, output_size), Sgd::new(LEARNING_RATE), rng, WGT_INIT_STD),
+        Add::new_zero(output_size, Sgd::new(LEARNING_RATE)),
         Softmax::new();
         CrossEntropy::new()
     )

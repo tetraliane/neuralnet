@@ -1,4 +1,5 @@
 use ndarray::{Array1, Array2, Axis, Ix1, LinalgScalar};
+use num_traits::Zero;
 
 use crate::traits::{Layer, Optimizer};
 
@@ -10,6 +11,13 @@ pub struct Add<V, O> {
 impl<V, O> Add<V, O> {
     pub fn new(bias: Array1<V>, optimizer: O) -> Self {
         Self { bias, optimizer }
+    }
+
+    pub fn new_zero(shape: usize, optimizer: O) -> Self
+    where
+        V: Clone + Zero,
+    {
+        Self::new(Array1::zeros(shape), optimizer)
     }
 }
 
