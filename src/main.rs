@@ -121,8 +121,6 @@ trait Fittable<Input, Output, Loss> {
     fn fit(&mut self, input: &Input, teacher: &Output) -> Input;
 }
 
-type FMat = Array2<f32>;
-
 struct Network<V> {
     head: Box<dyn Layer<Array2<V>, Array2<V>>>,
     tail: Box<dyn Fittable<Array2<V>, Array2<V>, V>>,
@@ -213,20 +211,21 @@ where
     }
 }
 
-struct Dot<V, O: Optimizer<V, Ix2>> {
+struct Dot<V, O> {
     wgt: Array2<V>,
     optimizer: O,
 }
 
-impl<V, O: Optimizer<V, Ix2>> Dot<V, O> {
+impl<V, O> Dot<V, O> {
     fn new(wgt: Array2<V>, optimizer: O) -> Self {
         Self { wgt, optimizer }
     }
 }
 
-impl<V, O: Optimizer<V, Ix2>> Layer<Array2<V>, Array2<V>> for Dot<V, O>
+impl<V, O> Layer<Array2<V>, Array2<V>> for Dot<V, O>
 where
     V: LinalgScalar,
+    O: Optimizer<V, Ix2>,
 {
     fn forward(&self, input: &Array2<V>) -> Array2<V> {
         input.dot(&self.wgt)
@@ -242,12 +241,12 @@ where
     }
 }
 
-struct Add<V, O: Optimizer<V, Ix1>> {
+struct Add<V, O> {
     bias: Array1<V>,
     optimizer: O,
 }
 
-impl<V, O: Optimizer<V, Ix1>> Add<V, O> {
+impl<V, O> Add<V, O> {
     fn new(bias: Array1<V>, optimizer: O) -> Self {
         Self { bias, optimizer }
     }
