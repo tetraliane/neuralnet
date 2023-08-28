@@ -70,4 +70,20 @@ impl<V> Terminal<Array2<V>> for Network<V> {
         self.head.learn(&dy, input);
         dx
     }
+
+    fn layer_at(&self, index: usize) -> Option<&dyn Layer<Array2<V>, Output = Array2<V>>> {
+        if index == 0 {
+            Some(&*self.head)
+        } else {
+            self.tail.layer_at(index - 1)
+        }
+    }
+
+    fn layer_mut_at(&mut self, index: usize) -> Option<&mut dyn Layer<Array2<V>, Output = Array2<V>>> {
+        if index == 0 {
+            Some(&mut *self.head)
+        } else {
+            self.tail.layer_mut_at(index - 1)
+        }
+    }
 }
