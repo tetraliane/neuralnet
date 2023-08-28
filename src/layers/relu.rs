@@ -1,4 +1,4 @@
-use ndarray::{Array2, Ix2};
+use ndarray::{Array, Dimension};
 use num_traits::Zero;
 
 use crate::traits::Layer;
@@ -11,11 +11,12 @@ impl Relu {
     }
 }
 
-impl<V> Layer<V, Ix2> for Relu
+impl<V, D> Layer<V, D> for Relu
 where
     V: PartialOrd + Clone + Zero,
+    D: Dimension,
 {
-    fn forward(&self, input: &Array2<V>) -> Array2<V> {
+    fn forward(&self, input: &Array<V, D>) -> Array<V, D> {
         input.map(|xi| {
             if xi > &V::zero() {
                 xi.clone()
@@ -25,7 +26,7 @@ where
         })
     }
 
-    fn backward(&self, grad_out: &Array2<V>, input: &Array2<V>) -> Array2<V> {
+    fn backward(&self, grad_out: &Array<V, D>, input: &Array<V, D>) -> Array<V, D> {
         let mut dx = grad_out.to_owned();
         dx.zip_mut_with(input, |dout_i, xi| {
             *dout_i = if *xi <= V::zero() {
@@ -37,5 +38,5 @@ where
         dx
     }
 
-    fn learn(&mut self, _: &Array2<V>, _: &Array2<V>) {}
+    fn learn(&mut self, _: &Array<V, D>, _: &Array<V, D>) {}
 }
