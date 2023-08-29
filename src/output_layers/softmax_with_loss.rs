@@ -1,4 +1,4 @@
-use ndarray::{Array2, ScalarOperand, Ix2};
+use ndarray::{Array2, Ix2, ScalarOperand};
 use num_traits::Float;
 
 use crate::traits::Terminal;

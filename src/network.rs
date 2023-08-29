@@ -8,10 +8,7 @@ pub struct Network<V> {
 }
 
 impl<V> Network<V> {
-    pub fn new(
-        head: Box<dyn Layer<V, Ix2>>,
-        tail: Box<dyn Terminal<V, Ix2>>,
-    ) -> Self {
+    pub fn new(head: Box<dyn Layer<V, Ix2>>, tail: Box<dyn Terminal<V, Ix2>>) -> Self {
         Self { head, tail }
     }
 }
