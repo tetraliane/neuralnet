@@ -26,8 +26,8 @@ where
     V: LinalgScalar,
     O: Optimizer<V, Ix1>,
 {
-    fn params(&self) -> Option<ndarray::Array<V, ndarray::IxDyn>> {
-        Some(self.bias.clone().into_dyn())
+    fn params(&self) -> Option<ndarray::ArrayViewD<V>> {
+        Some(self.bias.view().into_dyn())
     }
 
     fn forward(&self, input: &Array2<V>) -> Array2<V> {

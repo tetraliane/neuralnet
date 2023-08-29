@@ -16,7 +16,7 @@ where
     V: PartialOrd + Clone + Zero,
     D: Dimension,
 {
-    fn params(&self) -> Option<Array<V, ndarray::IxDyn>> {
+    fn params(&self) -> Option<ndarray::ArrayViewD<V>> {
         None
     }
 

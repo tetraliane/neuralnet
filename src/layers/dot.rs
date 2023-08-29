@@ -29,8 +29,8 @@ where
     V: LinalgScalar,
     O: Optimizer<V, Ix2>,
 {
-    fn params(&self) -> Option<ndarray::Array<V, ndarray::IxDyn>> {
-        Some(self.wgt.clone().into_dyn())
+    fn params(&self) -> Option<ndarray::ArrayViewD<V>> {
+        Some(self.wgt.view().into_dyn())
     }
 
     fn forward(&self, input: &Array2<V>) -> Array2<V> {

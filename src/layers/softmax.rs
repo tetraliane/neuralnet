@@ -13,7 +13,7 @@ impl Softmax {
 }
 
 impl<V: Float + ScalarOperand> Layer<V, Ix2> for Softmax {
-    fn params(&self) -> Option<ndarray::Array<V, ndarray::IxDyn>> {
+    fn params(&self) -> Option<ndarray::ArrayViewD<V>> {
         None
     }
 
