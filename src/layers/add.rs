@@ -77,6 +77,12 @@ mod tests {
     }
 
     #[test]
+    fn should_have_given_array_as_params() {
+        let layer = Add::new(bias(), DummyOpt);
+        assert_eq!(layer.params().unwrap(), bias().into_dyn())
+    }
+
+    #[test]
     fn should_add_bias_to_input() {
         let expected =
             Array2::from_shape_vec((2, 3), vec![4 + 1, 5 + 2, 6 + 3, 7 + 1, 8 + 2, 9 + 3]).unwrap();
@@ -100,12 +106,17 @@ mod tests {
         let mut layer = Add::new(bias(), DummyOpt);
         layer.learn(&grad(), &input());
 
-        assert_eq!(layer.bias, bias_after_update())
+        assert_eq!(layer.params().unwrap(), bias_after_update().into_dyn());
+
+        let expected =
+            Array2::from_shape_vec((2, 3), vec![4 + 16, 5 + 17, 6 + 18, 7 + 16, 8 + 17, 9 + 18]).unwrap();
+        assert_eq!(layer.forward(&input()), expected)
     }
 
     #[test]
     fn should_initialize_bias_with_zero() {
         let layer = Add::<usize, _>::new_zero(3, DummyOpt);
-        assert_eq!(layer.bias, Array1::zeros(3))
+        assert_eq!(layer.params().unwrap(), Array1::zeros(3).into_dyn());
+        assert_eq!(layer.forward(&input()), input());
     }
 }
